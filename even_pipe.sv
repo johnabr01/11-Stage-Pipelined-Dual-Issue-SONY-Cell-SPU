@@ -66,10 +66,48 @@ always_comb begin
         end
         8: begin //BG: Borrow generate
             for (int j=0; j<16; j+=4) begin
-                
+                if (RB_even[j +: 4] > RA_even[j +: 4]) begin
+                    temp[j +: 4] = 4'b1111; // borrow generated
+                end else begin
+                    temp[j +: 4] = 4'b0000; // no borrow
+                end
             end
         end
-        default: DataOut_even = 0;
+        9: begin // SFH: Subtract from halfword
+            for (int j=0; j<8; j++) begin
+                temp[2j:2j+1] = RB_even[2j:2j+1] + (~RA_even[2j:2j+1]) + 1; // two's complement subtraction
+            end
+        end
+        10: begin // SFHI: Subtract from halfword immediate
+            t = {{6{imm_10bit[9]}}, imm_10bit[9:0]}; 
+            for (int j=0; j<8; j++) begin
+                temp[2j:2j+1] = t + (~RA_even[2j:2j+1]) + 1; // two's complement subtraction
+            end
+        end
+        11: begin //SF: Subtract from word
+            for (int j=0; j<3; j++) begin
+                temp[4j:4j+3] = RB_even[4j:4j+3] + (~RA_even[4j:4j+3]) + 1; // two's complement subtraction
+            end
+        end
+        12: begin // SFI: Subtract from word immediate
+            t = {{22{imm_10bit[9]}}, imm_10bit[9:0]};
+            for (int j=0; j<3; j++) begin
+                temp[4j:4j+3] = t + (~RA_even[4j:4j+3]) + 1; // two's complement subtraction
+            end
+        end
+        13: begin //AND: bitwise AND
+            for (int j=0; j<3; j++) begin
+                temp[4j:4j+3] = RA_even[4j:4j+3] & RB_even[4j:4j+3];
+            end
+        end
+        14: begin //ANDHI: And halfword immediate
+            t = {{6{imm_10bit[9]}}, imm_10bit[9:0]}; 
+            for (int j=0; j<8; j++) begin
+                temp[2j:2j+1] = RA_even[2j:2j+1] & t;
+            end
+            
+        end
+        default: temp = 0;
     endcase
 end
 
