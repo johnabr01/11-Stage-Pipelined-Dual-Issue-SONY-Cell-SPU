@@ -28,24 +28,24 @@ always_comb begin
         end 
         1: begin //AH: Add halfword
             for (int j=0; j<8; j++) begin
-                temp[2j:2j+1] = RA_even[2j:2j+1] + RB_even[2j:2j+1];
+                temp[2*j:2*j+1] = RA_even[2*j:2*j+1] + RB_even[2*j:2*j+1];
             end
         end
         2: begin //AHI: Add halfword immediate
             s = {{6{imm_10bit[9]}}, imm_10bit[9:0]}; 
             for (int j=0; j<8; j++) begin
-                temp[2j:2j+1] = RA_even[2j:2j+1] + s;
+                temp[2*j:2*j+1] = RA_even[2*j:2*j+1] + s;
             end
         end
         3: begin //A: Add word
-            for (int j=0; j<3; j++) begin
-                temp[4j:4j+3] = RA_even[4j:4j+3] + RB_even[4j:4j+3];
+            for (int j=0; j<4; j++) begin
+                temp[4*j:4*j+3] = RA_even[4*j:4*j+3] + RB_even[4*j:4*j+3];
             end
         end
         4: begin //AI: add word immediate
             t = {{22{imm_10bit[9]}}, imm_10bit[9:0]};
-            for (int j=0; j<3; j++) begin
-                temp[4j:4j+3] = RA_even[4j:4j+3] + t;
+            for (int j=0; j<4; j++) begin
+                temp[4*j:4*j+3] = RA_even[4*j:4*j+3] + t;
             end
         end
         5: begin //ADDX: add extended
@@ -75,37 +75,92 @@ always_comb begin
         end
         9: begin // SFH: Subtract from halfword
             for (int j=0; j<8; j++) begin
-                temp[2j:2j+1] = RB_even[2j:2j+1] + (~RA_even[2j:2j+1]) + 1; // two's complement subtraction
+                temp[2*j:2*j+1] = RB_even[2*j:2*j+1] + (~RA_even[2*j:2*j+1]) + 1; // two's complement subtraction
             end
         end
         10: begin // SFHI: Subtract from halfword immediate
             t = {{6{imm_10bit[9]}}, imm_10bit[9:0]}; 
             for (int j=0; j<8; j++) begin
-                temp[2j:2j+1] = t + (~RA_even[2j:2j+1]) + 1; // two's complement subtraction
+                temp[2*j:2*j+1] = t + (~RA_even[2*j:2*j+1]) + 1; // two's complement subtraction
             end
         end
         11: begin //SF: Subtract from word
-            for (int j=0; j<3; j++) begin
-                temp[4j:4j+3] = RB_even[4j:4j+3] + (~RA_even[4j:4j+3]) + 1; // two's complement subtraction
+            for (int j=0; j<4; j++) begin
+                temp[4*j:4*j+3] = RB_even[4*j:4*j+3] + (~RA_even[4*j:4*j+3]) + 1; // two's complement subtraction
             end
         end
         12: begin // SFI: Subtract from word immediate
             t = {{22{imm_10bit[9]}}, imm_10bit[9:0]};
-            for (int j=0; j<3; j++) begin
-                temp[4j:4j+3] = t + (~RA_even[4j:4j+3]) + 1; // two's complement subtraction
+            for (int j=0; j<4; j++) begin
+                temp[4*j:4*j+3] = t + (~RA_even[4*j:4*j+3]) + 1; // two's complement subtraction
             end
         end
         13: begin //AND: bitwise AND
-            for (int j=0; j<3; j++) begin
-                temp[4j:4j+3] = RA_even[4j:4j+3] & RB_even[4j:4j+3];
+            for (int j=0; j<4; j++) begin
+                temp[4*j:4*j+3] = RA_even[4*j:4*j+3] & RB_even[4*j:4*j+3];
             end
         end
         14: begin //ANDHI: And halfword immediate
             t = {{6{imm_10bit[9]}}, imm_10bit[9:0]}; 
             for (int j=0; j<8; j++) begin
-                temp[2j:2j+1] = RA_even[2j:2j+1] & t;
+                temp[2*j:2*j+1] = RA_even[2*j:2*j+1] & t;
             end
-            
+        end
+        15: begin //ANDI: And word immediate
+            t = {{22{imm_10bit[9]}}, imm_10bit[9:0]};
+            for (int j=0; j<4; j++) begin
+                temp[4*j:4*j+3] = RA_even[4*j:4*j+3] & t;
+            end
+        end
+        16: begin //OR: bitwise OR
+            for (int j=0; j<4; j++) begin
+                temp[4*j:4*j+3] = RA_even[4*j:4*j+3] | RB_even[4*j:4*j+3];
+            end
+        end
+        17: begin //ORHI: Or halfword immediate
+            t = {{6{imm_10bit[9]}}, imm_10bit[9:0]}; 
+            for (int j=0; j<8; j++) begin
+                temp[2*j:2*j+1] = RA_even[2*j:2*j+1] | t;
+            end
+        end
+        18: begin //ORI: Or word immediate
+            t = {{22{imm_10bit[9]}}, imm_10bit[9:0]};
+            for (int j=0; j<4; j++) begin
+                temp[4*j:4*j+3] = RA_even[4*j:4*j+3] | t;
+            end
+        end
+        19: begin //XOR: bitwise XOR
+            for (int j=0; j<4; j++) begin
+                temp[4*j:4*j+3] = RA_even[4*j:4*j+3] ^ RB_even[4*j:4*j+3];
+            end
+        end
+        20: begin //XORHI: Xor halfword immediate
+            t = {{6{imm_10bit[9]}}, imm_10bit[9:0]}; 
+            for (int j=0; j<8; j++) begin
+                temp[2*j:2*j+1] = RA_even[2*j:2*j+1] ^ t;
+            end
+        end
+        21: begin //XORI: Xor word immediate
+            t = {{22{imm_10bit[9]}}, imm_10bit[9:0]};
+            for (int j=0; j<4; j++) begin
+                temp[4*j:4*j+3] = RA_even[4*j:4*j+3] ^ t;
+            end
+        end
+        22: begin //NAND: bitwise NAND
+            for (int j=0; j<4; j++) begin
+                temp[4*j:4*j+3] = ~(RA_even[4*j:4*j+3] & RB_even[4*j:4*j+3]);
+            end             
+        end
+        23: begin //NOR: bitwise NOR
+            for (int j=0; j<4; j++) begin
+                temp[4*j:4*j+3] = ~(RA_even[4*j:4*j+3] | RB_even[4*j:4*j+3]);
+            end            
+        end
+        24: begin //CLZ: Count leading zeros
+            for (int j=0; j<4; j++) begin
+                t = 32'b0;
+                u = 
+            end
         end
         default: temp = 0;
     endcase
