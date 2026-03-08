@@ -1,6 +1,7 @@
 module odd_pipe(
     input clk,
     input rst_n,
+    input [0:31] PC;
     input [0:127] RA_odd, 
     input [0:127] RB_odd,
     input [0:127] RC_odd,
@@ -13,8 +14,9 @@ module odd_pipe(
     input [0:3] Latency_odd, //max latency is 8
     input [0:127] RT_odd,
     input RegWrite_odd,
-    output [0:6] RT_odd_dest_addr,
-    output [0:127] RT_odd_dest_data
+    output logic [0:31] PC_out,
+    output logic [0:6] RT_odd_dest_addr,
+    output logic [0:127] RT_odd_dest_data
 );
 
 logic [0:2] s_3bit;
@@ -23,6 +25,18 @@ logic [0:3] s_4bit;
 logic [0:7] s_8bit;
 
 logic [0:127] r;
+logic [0:127] r_mem; //output from local store
+logic [0:31] LSA;   //Local Store Address
+logic MemWrite; //Memory Write Enable
+
+local_store local_store_inst(
+    .clk(clk),
+    .address(LSA[0:10]),
+    .write_data(RT_odd),
+    .MemWrite(MemWrite),
+    .read_data(r_mem)
+);
+
 
 always_comb begin
     s_3bit = 0;
@@ -30,9 +44,12 @@ always_comb begin
     s_4bit = 0;
     s_8bit = 0;
     r = 0;
-
+    MemWrite = 0;
 
     case(ID_odd) : //Shift left quadword by bits
+        0: begin
+            //hardware no op
+        end
         67: begin
             s_3bit = RB_odd[29:31];
             for(int b = 0; b < 127; b++) begin
@@ -126,18 +143,113 @@ always_comb begin
         end
 
         78 : begin //Load Quadword (d-form)
+            LSA = ($signed({18{imm_10bit[0]}, imm_10bit, 4'b0000}) + $signed(RA_odd[0:31])) & 32'hFFFFFFF0; //RA bytes 0 to 3
+            r = r_mem; ///*memory[LSA]*/;
         end
 
         79 : begin //Load Quadword (x-form)
+            LSA = ($signed(RA_odd[0:31]) + $signed(RB_odd[0:31])) & 32'hFFFFFFF0;
+            r = r_mem;
         end
 
         80 : begin //Load Quadword (a-form)
+            LSA = ({14{imm_16bit[0]}, imm_16bit, 4'b00}) & 32'hFFFFFFF0; 
+            r = r_mem;
         end
 
+        81 : begin //Store Quadword (d-form)
+            LSA = ($signed({18{imm_10bit[0]}, imm_10bit, 4'b0000}) + $signed(RA_odd[0:31])) & 32'hFFFFFFF0; //RA bytes 0 to 3
+            MemWrite = 1;
+        end
 
+        82: begin //Store Quadword (x-form)
+            LSA = ($signed(RA_odd[0:31]) + $signed(RB_odd[0:31])) & 32'hFFFFFFF0;
+            MemWrite = 1;
+        end
 
+        83: begin //Store Quadword (a-form)
+            LSA = ({14{imm_16bit[0]}, imm_16bit, 4'b00}) & 32'hFFFFFFF0; 
+            MemWrite = 1;
+        end
 
+        84: begin //Branch Relative
+            PC_out = PC + $signed({14{imm_16bit[0]}, imm_16bit, 2'b00});    
+        end
 
+        85: begin //Branch Absolute 
+            PC_out = {14{imm_16bit[0]}, imm_16bit, 2'b00};
+        end
+
+        86: begin //Branch Relative and Set Link
+            r[0:31] = PC + 4; //Address of the next instruction
+            r[32: 127] = 0;
+            PC_out = PC + $signed({14{imm_16bit[0]}, imm_16bit, 2'b00});
+        end
+        
+        87: begin //Branch Absolute and Set Link
+            r[0:31] = PC + 4; //Address of the next instruction
+            r[32:127] = 0;
+            PC_out = {14{imm_16bit[0]}, imm_16bit, 2'b00};
+        end
+
+        88: begin //Branch Indirect
+            PC_out = RA_odd[0:31] &  32'hFFFFFFFC; //RA bytes 0 to 3
+        end
+
+        89: begin //Branch If Not Zero Word
+            if (RT_odd[0:31] != 0) PC_out = {14{imm_16bit[0]}, imm_16bit, 2'b00};
+            else PC_out = PC + 4;
+        end
+
+        90: begin //Branch if Zero Word
+            if (RT_odd[0:31] == 0) PC_out = {14{imm_16bit[0]}, imm_16bit, 2'b00} & 32'hFFFFFFFC;
+            else PC_out = PC + 4;
+        end
+
+        91: begin //Branch IF Not Zero Halfword
+            if (RT_odd[16:31] != 0) PC_out = {14{imm_16bit[0]}, imm_16bit, 2'b00} & 32'hFFFFFFFC;
+            else PC_out = PC + 4;
+        end
+
+        92: begin //Branch if Zero Halfword
+            if (RT_odd[16:31] == 0) PC_out = {14{imm_16bit[0]}, imm_16bit, 2'b00} & 32'hFFFFFFFC;
+            else PC_out = PC + 4;
+        end
+
+        93: begin //Branch Indirect If Zero
+            t = RA_odd[0:31] & 32'hFFFFFFFC; //RA bytes 0 to 3
+            u =  PC + 4;
+            if (RT_odd[0:31] == 0) PC_out = t & 32'hFFFFFFFC;
+            else PC_out = u;
+        end
+        
+        94: begin //Branch Indirect If Not Zero
+            t = RA_odd[0:31] & 32'hFFFFFFFC; //RA bytes 0 to 3
+            u =  PC + 4;
+            if (RT_odd[0:31] != 0) PC_out = t & 32'hFFFFFFFC;
+            else PC_out = u;
+        end
+
+        95: begin //Branch Indirect If Zero Halfword
+            t = RA_odd[0:31] & 32'hFFFFFFFC; //RA bytes 0 to 3
+            u =  PC + 4;
+            if (RT_odd[16:31] != 0) PC_out = t & 32'hFFFFFFFC;
+            else PC_out = u;
+        end
+        
+
+        96: begin //Branch Indirect If Not Zero Halfword
+            t = RA_odd[0:31] & 32'hFFFFFFFC; //RA bytes 0 to 3
+            u =  PC + 4;
+            if (RT_odd[16:31] != 0) PC_out = t & 32'hFFFFFFFC;
+            else PC_out = u;
+        end
+
+        98: begin //Nop load
+        end
+        
+        99: begin //Stop and signal
+        end
     endcase
 end
 

@@ -16,8 +16,8 @@ module even_pipe #(
     input [0:3] Latency_even, //max latency is 8
     input [0:127] RT_even,
     input RegWrite_even,
-    output [0:6] RT_even_dest_addr,
-    output [0:127] RT_even_dest_data
+    output logic [0:6] RT_even_dest_addr,
+    output logic [0:127] RT_even_dest_data
 );
 
 logic [0:15] s;
@@ -588,7 +588,12 @@ always_comb begin
                 RA_even[(4*i+3)*BYTE +: BYTE];
             end
         end
+
+        97: begin //No op execute
+        end
         
+        99: begin //Stop and signal
+        end
         default: temp = 0;
     endcase
 end
