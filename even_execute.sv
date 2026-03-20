@@ -7,18 +7,20 @@ module even_execute #(
     input [0:127] RA_even, 
     input [0:127] RB_even,
     input [0:127] RC_even,
-    input [0:6] imm_7bit,
-    input [0:9] imm_10bit,
-    input [0:15] imm_16bit,
-    input [0:17] imm_18bit,
+    input [0:31] instr_even,
     input [0:6] ID_even, //there are 100 instructions
-    input [0:3] Latency_even, //max latency is 8
+    //input [0:3] Latency_even, //max latency is 8
     input [0:127] RT_even,
-    input RegWrite_even,
-    output logic [0:127] data_out_even,
-    output logic [0:3] unit_ID_even,
-    output logic [0:3] latency_even,
+    //input RegWrite_even,
+    output logic [0:127] data_out_even
+    //output logic [0:3] unit_ID_even,
+    //output logic [0:3] latency_even,
 );
+
+logic [0:6] imm_7bit;
+logic [0:9] imm_10bit;
+logic [0:15] imm_16bit;
+logic [0:17] imm_18bit;
 
 logic [0:15] s;
 logic [0:31] t;
@@ -31,7 +33,12 @@ logic [0:4] k;
 
 logic [0:127] temp;
 
-assign even_data_out = temp; // default value for temp
+assign data_out_even = temp; // default value for temp
+
+assign imm_7bit = instr_even[11:17];
+assign imm_10bit = instr_even[8:17];
+assign imm_16bit = instr_even[9:24];
+assign imm_18bit = instr_even[7:24];
 
 always_comb begin 
     temp = 0;

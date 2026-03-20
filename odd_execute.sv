@@ -7,19 +7,16 @@ module odd_execute #(
     input [0:127] RA_odd, 
     input [0:127] RB_odd,
     // input [0:127] RC_odd,
-    input [0:6] imm_7bit,
-    input [0:9] imm_10bit,
-    input [0:15] imm_16bit,
-    input [0:17] imm_18bit,
+    input [0:31] instr_odd,
     input [0:6] ID_odd, //there are 100 instructions
     input [0:3] Latency_odd, //max latency is 8
     input [0:127] RT_odd,
-    output RegWrite_odd,
-    input MemWrite,
+    // output RegWrite_odd,
+    // input MemWrite,
     output logic [0:31] PC_out,
-    output logic [0:127] odd_data_out
-    output logic [0:3] unit_ID_odd,
-    output logic [0:3] latency_odd,
+    output logic [0:127] data_out_odd
+    //output logic [0:3] unit_ID_odd,
+    //output logic [0:3] latency_odd
 );
 
 logic [0:2] s_3bit;
@@ -31,6 +28,18 @@ logic [0:127] r;
 logic [0:127] r_mem; //output from local store
 logic [0:31] LSA;   //Local Store Address
 
+logic [0:6] imm_7bit;
+logic [0:9] imm_10bit;
+logic [0:15] imm_16bit;
+logic [0:17] imm_18bit;
+
+logic MemWrite;
+
+assign imm_7bit = instr_odd[11:17];
+assign imm_10bit = instr_odd[8:17];
+assign imm_16bit = instr_odd[9:24];
+assign imm_18bit = instr_odd[7:24];
+
 local_store local_store_inst(
     .clk(clk),
     .address(LSA[0:10]),
@@ -39,7 +48,7 @@ local_store local_store_inst(
     .read_data(r_mem)
 );
 
-assign odd_data_out = r;
+assign data_out_odd = r;
 
 always_comb begin
     s_3bit = 0;
@@ -162,14 +171,17 @@ always_comb begin
 
         81 : begin //Store Quadword (d-form)
             LSA = ($signed({18{imm_10bit[0]}, imm_10bit, 4'b0000}) + $signed(RA_odd[0:31])) & 32'hFFFFFFF0; //RA bytes 0 to 3
+            MemWrite = 1;
         end
 
         82: begin //Store Quadword (x-form)
             LSA = ($signed(RA_odd[0:31]) + $signed(RB_odd[0:31])) & 32'hFFFFFFF0;
+            MemWrite = 1;
         end
 
         83: begin //Store Quadword (a-form)
             LSA = ({14{imm_16bit[0]}, imm_16bit, 4'b00}) & 32'hFFFFFFF0; 
+            MemWrite = 1;
         end
 
         84: begin //Branch Relative

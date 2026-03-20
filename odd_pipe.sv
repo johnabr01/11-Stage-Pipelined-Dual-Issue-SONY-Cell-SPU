@@ -1,0 +1,71 @@
+import packet_pkg::*;
+
+module odd_pipe (
+    input clk,
+    input rst_n,
+    input [0:31] PC,
+    input packet pkt_in, //biggest packet containing all the control signals and data from the decode stage.
+    output logic [0:31] PC_out,
+    output logic canForwardOdd[0:6],
+    output odd_packet odd_pkt_pipes[0:6]
+);
+
+logic [0:127] data_out_odd;
+logic [0:3] curr_stage_counter [0:6];
+
+odd_execute u_odd_execute (
+    .clk             (clk),
+    .rst_n           (rst_n),
+    .PC              (PC),
+    .RA_odd          (pkt_in.RA),
+    .RB_odd          (pkt_in.RB),
+    .instr_odd       (pkt_in.instr),
+    .ID_odd          (pkt_in.ID),
+    .RT_odd          (pkt_in.RT_read_data),
+    .PC_out          (PC_out),
+    //.RT_odd_dest_data(RT_dest_data),
+    .data_out_odd    (data_out_odd)
+);
+
+// the packet that contains the control signals from decode stage and data from execute that will be stored in the pipeline registers
+odd_packet pipeline_packet ( 
+    .unit_ID(pkt_in.ID_odd),
+    .result(data_out_odd), //data from even execute module
+    .latency(pkt_in.Latency_odd),
+    .RegWr(pkt_in.RegWrite_odd),
+    .dest_addr(pkt_in.RT_dest_addr),
+    .curr_stage_counter(curr_stage_counter),
+    .PC(PC_out)
+);
+
+always_ff @(posedge clk) begin
+    if(!rst_n) begin
+        for(int i = 0; i < 7; i++) begin
+            odd_pkt_pipes[i].unit_ID <= 0;
+            odd_pkt_pipes[i].result <= 0;
+            odd_pkt_pipes[i].latency <= 0;
+            odd_pkt_pipes[i].RegWr <= 0;
+            odd_pkt_pipes[i].dest_addr <= 0;
+            odd_pkt_pipes[i].curr_stage_counter <= 0;
+        end
+    end
+    else begin
+        odd_pkt_pipes[0] <= pipeline_packet;
+        //odd_pkt_pipes[0].curr_stage_counter <= 0;
+        for(int i = 1; i < 7; i++) begin
+            odd_pkt_pipes[i] <= odd_pkt_pipes[i-1];
+            //Logic to increment counter (or not increment it) based on 
+            //if counter associated with stage reached the instruction's latency
+            if(odd_pkt_pipes[i-1].curr_stage_counter < odd_pkt_pipes[i-1].latency) odd_pkt_pipes[i].curr_stage_counter <= odd_pkt_pipes[i-1].curr_stage_counter + 1;
+            else odd_pkt_pipes[i].curr_stage_counter <= odd_pkt_pipes[i-1].curr_stage_counter;
+        end
+    end
+end
+
+always_comb begin
+    for(int i = 0; i < 7; i++) begin
+        canForwardOdd[i] = (odd_pkt_pipes[i].curr_stage_counter == odd_pkt_pipes[i].latency) ? 1 : 0;
+    end
+end
+
+endmodule
