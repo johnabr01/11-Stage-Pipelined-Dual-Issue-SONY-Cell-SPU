@@ -1,3 +1,5 @@
+import packet_pkg::*;
+
 module even_execute #(
     localparam BYTE = 8
 )
@@ -30,8 +32,13 @@ logic [0:3] s_4bit;
 logic [0:7] s_8bit;
 logic [0:31] s_32bit; 
 logic [0:4] k;
+logic [0:31] u;
 
 logic [0:127] temp;
+
+logic [0 : 31] avgb;
+
+int c;
 
 assign data_out_even = temp; // default value for temp
 
@@ -75,7 +82,7 @@ always_comb begin
         end
         6: begin //CG: Carry generate
             for (int j=0; j<16; j+=4) begin
-                t_33bit = {1'b0, RA[j +: 4]} + {1'b0, RB[j +: 4]};
+                t_33bit = {1'b0, RA_even[j +: 4]} + {1'b0, RB_even[j +: 4]};
                 temp[j*BYTE +: 4*BYTE] = {32'b0,t[31]}; 
             end
         end
@@ -192,7 +199,7 @@ always_comb begin
         end
 
         25: begin //FSMH: Form Select Mask for Halfwords
-            s_7bit = RA_even[120:127];
+            s_8bit = RA_even[120:127];
             k = 0;
             for (int j=0; j<8; j++) begin
                 if (s_4bit[j] == 1'b0) begin
@@ -283,9 +290,9 @@ always_comb begin
         33: begin //CGT: Compare Greater Than Word
             for (int i = 0; i < 4; i++) begin
                 if ($signed(RA_even[4*i*BYTE +: 4*BYTE]) > $signed(RB_even[4*i*BYTE +: 4*BYTE])) begin        //signed comparison
-                    temp[4*i*BYTE +: 4*BYTE] = 16'hFFFFFFFF;
+                    temp[4*i*BYTE +: 4*BYTE] = 32'hFFFFFFFF;
                 end else begin
-                    temp[4*i*BYTE +: 4*BYTE] = 16'h00000000;
+                    temp[4*i*BYTE +: 4*BYTE] = 32'h00000000;
                 end
             end
         end
@@ -294,9 +301,9 @@ always_comb begin
             t = {{22{imm_10bit[0]}}, imm_10bit}; 
             for (int i = 0; i < 4; i++) begin
                 if ($signed(RA_even[4*i*BYTE +: 4*BYTE]) > $signed(t)) begin        //signed comparison
-                    temp[4*i*BYTE +: 4*BYTE] = 16'hFFFFFFFF;
+                    temp[4*i*BYTE +: 4*BYTE] = 32'hFFFFFFFF;
                 end else begin
-                    temp[4*i*BYTE +: 4*BYTE] = 16'h00000000;
+                    temp[4*i*BYTE +: 4*BYTE] = 32'h00000000;
                 end
             end
         end
@@ -376,7 +383,7 @@ always_comb begin
 
         44: begin //FSMBI: Form Select Mask for BYTEs Immediate
             s = imm_16bit;
-            for (int j-0; j<16; j++) begin
+            for (int j=0; j<16; j++) begin
                 if (s[j] == 1'b0) begin
                     temp[j*BYTE +: BYTE] = 8'h00;
                 end else begin
@@ -551,7 +558,7 @@ always_comb begin
 
         63: begin //CNTB: Count Ones in Bytes
             for(int i = 0; i < 16; i++) begin
-                int c = 0;
+                c = 0;
                 for(int m = 0; m < 8; m++) begin
                     if (RA_even[i * BYTE + m] == 1) c = c + 1;
                 end
@@ -570,9 +577,10 @@ always_comb begin
 
         65 : begin //AVGB: Average Bytes
              for(int i = 0; i < 16; i++) begin
+                avgb = ({8'b0, RA_even[i * BYTE +: BYTE]} + 
+                {8'b0, RB_even[i * BYTE +: BYTE]} + 16'd1);
                 temp[i * BYTE +: BYTE] = 
-                ({8'b0, RA_even[i * BYTE +: BYTE]} + 
-                {8'b0, RB_even[i * BYTE +: BYTE]} + 16'd1)[7:14];
+                avgb[7:14];
              end
 
         end
@@ -600,8 +608,6 @@ always_comb begin
         97: begin //No op execute
         end
         
-        99: begin //Stop and signal
-        end
         default: temp = 0;
     endcase
 end

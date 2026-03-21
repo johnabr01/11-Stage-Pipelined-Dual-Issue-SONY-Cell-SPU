@@ -260,8 +260,6 @@ always_comb begin
         98: begin //Nop load
         end
         
-        99: begin //Stop and signal
-        end
     endcase
 end
 
