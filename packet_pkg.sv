@@ -10,7 +10,7 @@ package packet_pkg;
         logic RegWrite;
         logic [0:31] instr;
         logic [0:6] RT_dest_addr;
-        logic [0:127] RT_dest_data;
+        //logic [0:127] RT_dest_data;
     } packet;
 
     typedef struct packed {

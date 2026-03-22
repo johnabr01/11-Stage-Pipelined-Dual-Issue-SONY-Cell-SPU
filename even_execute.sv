@@ -551,7 +551,7 @@ always_comb begin
         62: begin //MPYA: Multiply and Add
             for(int i = 0; i < 4; i++) begin
                 temp[i*4*BYTE +: 4*BYTE] = $signed(RA_even[(4*i+2)*BYTE +: 2*BYTE]) * 
-                $signed(RA_odd[(4*i+2)*BYTE +: 2*BYTE]) +
+                $signed(RB_even[(4*i+2)*BYTE +: 2*BYTE]) +
                 $signed(RC_even[i*4*BYTE +: 4*BYTE]);
             end
         end

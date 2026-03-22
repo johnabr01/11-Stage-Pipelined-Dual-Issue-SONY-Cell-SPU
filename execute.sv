@@ -13,6 +13,7 @@ module execute #(
     input [0:6]  ID_even,
     input [0:3]  Latency_even,
     input [0:6]  RT_addr_even,
+    input RegWriteEven_in,
 
     input [0:31] PC,
     input [0:6]  RA_addr_odd,
@@ -21,6 +22,7 @@ module execute #(
     input [0:6]  ID_odd,
     input [0:3]  Latency_odd,
     input [0:6]  RT_addr_odd,
+    input RegWriteOdd_in,
     output logic [0:31] PC_out
 );
 
@@ -37,13 +39,13 @@ logic [0:127] wdata_even,   wdata_odd;
 packet        pkt_in_even;
 logic         canForwardEven[0 : LAST_STAGE - 1];
 even_packet   even_pkt_pipes [0:LAST_STAGE - 1];
-logic [0:127] RT_even_dest_data;
+//logic [0:127] RT_even_dest_data;
 
 // --- Odd Pipe ---
 packet        pkt_in_odd;
 logic         canForwardOdd[0 : LAST_STAGE - 1];
 odd_packet    odd_pkt_pipes  [0:LAST_STAGE - 1];
-logic [0:127] RT_odd_dest_data;
+//logic [0:127] RT_odd_dest_data;
 
 
 logic [0:127] forward_RA_even;
@@ -66,8 +68,8 @@ always_comb begin
     pkt_in_even.ID           = (ID_even != 99) ? ID_even : 0; //if its a stop instr, set ID to 0.
     pkt_in_even.Latency      = Latency_even;
     pkt_in_even.instr        = instr_even;
-    pkt_in_even.RegWrite     = RegWriteEven;
-    pkt_in_even.RT_dest_data = RT_even_dest_data;
+    pkt_in_even.RegWrite     = RegWriteEven_in;
+    //pkt_in_even.RT_dest_data = RT_even_dest_data;
 
     // Odd packet
     pkt_in_odd.RA            = RA_odd_data;
@@ -79,8 +81,8 @@ always_comb begin
     pkt_in_odd.ID            = (ID_odd != 99) ? ID_odd : 0; //we don't actually need this but im just a girl
     pkt_in_odd.Latency       = Latency_odd;
     pkt_in_odd.instr         = instr_odd;
-    pkt_in_odd.RegWrite      = RegWriteOdd;
-    pkt_in_odd.RT_dest_data  = RT_odd_dest_data;
+    pkt_in_odd.RegWrite      = RegWriteOdd_in;
+    //pkt_in_odd.RT_dest_data  = RT_odd_dest_data;
 end
 
 // --- Writeback: drive reg file write ports from pipe outputs ---
@@ -153,14 +155,14 @@ always_comb begin
     for(int i = 0; i < LAST_STAGE; i++) begin
         // ===================== FORWARDING TO EVEN PIPE INPUTS =====================
         if((canForwardEven[i]) && 
-        (even_pkt_pipes[i].RT_dest_addr == RA_addr_even) && 
+        (even_pkt_pipes[i].dest_addr == RA_addr_even) && 
         (even_pkt_pipes[i].RegWr == 1))
         begin
             forward_RA_even = even_pkt_pipes[i].result;
             break;
         end
         else if((canForwardOdd[i]) && 
-        (odd_pkt_pipes[i].RT_dest_addr == RA_addr_even) && 
+        (odd_pkt_pipes[i].dest_addr == RA_addr_even) && 
         (odd_pkt_pipes[i].RegWr == 1))
         begin
             forward_RA_even = odd_pkt_pipes[i].result;
@@ -168,14 +170,14 @@ always_comb begin
         end
 
         if((canForwardEven[i]) && 
-        (even_pkt_pipes[i].RT_dest_addr == RB_addr_even) && 
+        (even_pkt_pipes[i].dest_addr == RB_addr_even) && 
         (even_pkt_pipes[i].RegWr == 1))
         begin
             forward_RB_even = even_pkt_pipes[i].result;
             break;
         end
         else if((canForwardOdd[i]) && 
-        (odd_pkt_pipes[i].RT_dest_addr == RB_addr_even) && 
+        (odd_pkt_pipes[i].dest_addr == RB_addr_even) && 
         (odd_pkt_pipes[i].RegWr == 1))
         begin
             forward_RB_even = odd_pkt_pipes[i].result;
@@ -183,14 +185,14 @@ always_comb begin
         end
 
         if((canForwardEven[i]) && 
-        (even_pkt_pipes[i].RT_dest_addr == RC_addr_even) && 
+        (even_pkt_pipes[i].dest_addr == RC_addr_even) && 
         (even_pkt_pipes[i].RegWr == 1))
         begin
             forward_RC_even = even_pkt_pipes[i].result;
             break;
         end
         else if((canForwardOdd[i]) && 
-        (odd_pkt_pipes[i].RT_dest_addr == RC_addr_even) && 
+        (odd_pkt_pipes[i].dest_addr == RC_addr_even) && 
         (odd_pkt_pipes[i].RegWr == 1))
         begin
             forward_RC_even = odd_pkt_pipes[i].result;
@@ -198,14 +200,14 @@ always_comb begin
         end
 
         if((canForwardEven[i]) && 
-        (even_pkt_pipes[i].RT_dest_addr == RT_addr_even) && 
+        (even_pkt_pipes[i].dest_addr == RT_addr_even) && 
         (even_pkt_pipes[i].RegWr == 1))
         begin
             forward_RT_even = even_pkt_pipes[i].result;
             break;
         end
         else if((canForwardOdd[i]) && 
-        (odd_pkt_pipes[i].RT_dest_addr == RT_addr_even) && 
+        (odd_pkt_pipes[i].dest_addr == RT_addr_even) && 
         (odd_pkt_pipes[i].RegWr == 1))
         begin
             forward_RT_even = odd_pkt_pipes[i].result;
@@ -214,7 +216,7 @@ always_comb begin
 
         // ===================== ODD PIPE INPUTS =====================
         if((canForwardEven[i]) && 
-        (even_pkt_pipes[i].RT_dest_addr == RA_addr_odd) && 
+        (even_pkt_pipes[i].dest_addr == RA_addr_odd) && 
         (even_pkt_pipes[i].RegWr == 1))
         begin
             forward_RA_odd = even_pkt_pipes[i].result;
@@ -222,7 +224,7 @@ always_comb begin
         end
         
         else if((canForwardOdd[i]) && 
-        (odd_pkt_pipes[i].RT_dest_addr == RA_addr_odd) && 
+        (odd_pkt_pipes[i].dest_addr == RA_addr_odd) && 
         (odd_pkt_pipes[i].RegWr == 1))
         begin
             forward_RA_odd = odd_pkt_pipes[i].result;
@@ -230,7 +232,7 @@ always_comb begin
         end
 
         if((canForwardEven[i]) && 
-        (even_pkt_pipes[i].RT_dest_addr == RB_addr_odd) && 
+        (even_pkt_pipes[i].dest_addr == RB_addr_odd) && 
         (even_pkt_pipes[i].RegWr == 1))
         begin
             forward_RB_odd = even_pkt_pipes[i].result;
@@ -238,7 +240,7 @@ always_comb begin
         end
 
         else if((canForwardOdd[i]) && 
-        (odd_pkt_pipes[i].RT_dest_addr == RB_addr_odd) && 
+        (odd_pkt_pipes[i].dest_addr == RB_addr_odd) && 
         (odd_pkt_pipes[i].RegWr == 1))
         begin
             forward_RB_odd = odd_pkt_pipes[i].result;
@@ -246,7 +248,7 @@ always_comb begin
         end
 
         if((canForwardEven[i]) && 
-        (even_pkt_pipes[i].RT_dest_addr == RT_addr_odd) && 
+        (even_pkt_pipes[i].dest_addr == RT_addr_odd) && 
         (even_pkt_pipes[i].RegWr == 1))
         begin
             forward_RT_odd = even_pkt_pipes[i].result;
@@ -254,7 +256,7 @@ always_comb begin
         end
         
         else if((canForwardOdd[i]) && 
-        (odd_pkt_pipes[i].RT_dest_addr == RT_addr_odd) && 
+        (odd_pkt_pipes[i].dest_addr == RT_addr_odd) && 
         (odd_pkt_pipes[i].RegWr == 1))
         begin
             forward_RT_odd = odd_pkt_pipes[i].result;
