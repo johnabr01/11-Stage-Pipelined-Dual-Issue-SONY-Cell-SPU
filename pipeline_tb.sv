@@ -56,13 +56,53 @@ module pipeline_tb();
         rst_n = 1;
 
         // ahi r1, r0, 1
+        // @(negedge clk);
+        // instr_even   = 32'h1D004001;
+        // RA_addr_even = 7'd0;   // r0
+        // RT_addr_even = 7'd1;   // r1
+        // ID_even      = 7'd2;
+        // Latency_even = 4'd3;
+        // RegWriteEven_in = 1; 
+
         @(negedge clk);
-        instr_even   = 32'h1D004001;
-        RA_addr_even = 7'd0;   // r0
-        RT_addr_even = 7'd1;   // r1
-        ID_even      = 7'd2;
+        instr_even   = 32'h0D004083;
+        RA_addr_even = 7'd1;   // r0
+        RT_addr_even = 7'd3;   // r3
+        ID_even      = 7'd10;
         Latency_even = 4'd3;
         RegWriteEven_in = 1; 
+
+        //shlqbii
+        // @(negedge clk);
+        // instr_odd  = 32'h3F604082;
+        // RA_addr_odd = 7'd1;   // r1
+        // RT_addr_odd = 7'd2;   // r2
+        // ID_odd     = 7'd68;
+        // Latency_odd = 4'd4;
+        // RegWriteOdd_in = 1; 
+
+        // @(negedge clk);
+        // instr_even   = 32'h1D004001;
+        // RA_addr_even = 7'd0;   // r0
+        // RT_addr_even = 7'd2;   // r1
+        // ID_even      = 7'd2;
+        // Latency_even = 4'd3;
+        // RegWriteEven_in = 1; 
+
+        // instr_odd  = 32'h3F604082;
+        // RA_addr_odd = 7'd1;   // r1
+        // RT_addr_odd = 7'd3;   // r2
+        // ID_odd     = 7'd68;
+        // Latency_odd = 4'd4;
+        // RegWriteOdd_in = 1; 
+
+        // @(negedge clk);
+        // instr_even   = 32';
+        // RA_addr_even = 7'd;   // r0
+        // RT_addr_even = 7'd;   // r3
+        // ID_even      = 7'd;
+        // Latency_even = 4'd;
+        // RegWriteEven_in = 1; 
 
         repeat(20) @(posedge clk);
 

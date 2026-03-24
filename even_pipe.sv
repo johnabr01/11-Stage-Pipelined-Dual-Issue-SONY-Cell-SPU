@@ -75,7 +75,8 @@ end
 
 always_comb begin
     for(int i = 0; i < 8; i++) begin
-        canForwardEven[i] = (even_pkt_pipes[i].curr_stage_counter == even_pkt_pipes[i].latency) ? 1 : 0;
+        canForwardEven[i] = ((even_pkt_pipes[i].latency != 0) && 
+                            (even_pkt_pipes[i].curr_stage_counter == even_pkt_pipes[i].latency)) ? 1 : 0;
     end
 end
 

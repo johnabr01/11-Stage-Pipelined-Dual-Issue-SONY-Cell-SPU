@@ -31,6 +31,7 @@ module register_file(
     always_ff @(posedge clk) begin
         if (!reset_n) begin
             for (int i = 0; i < 128; i++) registers[i] <= '0;
+            registers[1] <= '1;
         end
         else begin
             if (RegWriteEven) registers[waddr_even] <= wdata_even;
