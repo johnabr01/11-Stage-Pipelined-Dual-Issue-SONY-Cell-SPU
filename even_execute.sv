@@ -102,24 +102,24 @@ always_comb begin
         end
         9: begin // SFH: Subtract from halfword
             for (int j=0; j<8; j++) begin
-                temp[2*j*BYTE +: 2*BYTE] = RB_even[2*j*BYTE +: 2*BYTE] + (~RA_even[2*j*BYTE +: 2*BYTE]) + 2; // two's complement subtraction
+                temp[2*j*BYTE +: 2*BYTE] = RB_even[2*j*BYTE +: 2*BYTE] + (~RA_even[2*j*BYTE +: 2*BYTE]) + 1; // two's complement subtraction
             end
         end
         10: begin // SFHI: Subtract from halfword immediate
             t = {{6{imm_10bit[0]}}, imm_10bit}; 
             for (int j=0; j<8; j++) begin
-                temp[2*j*BYTE +: 2*BYTE] = t + (~RA_even[2*j*BYTE +: 2*BYTE]) + 2; // two's complement subtraction
+                temp[2*j*BYTE +: 2*BYTE] = t + (~RA_even[2*j*BYTE +: 2*BYTE]) + 1; // two's complement subtraction
             end
         end
         11: begin //SF: Subtract from word
             for (int j=0; j<4; j++) begin
-                temp[4*j*BYTE +: 4*BYTE] = RB_even[4*j*BYTE +: 4*BYTE] + (~RA_even[4*j*BYTE +: 4*BYTE]) + 2; // two's complement subtraction
+                temp[4*j*BYTE +: 4*BYTE] = RB_even[4*j*BYTE +: 4*BYTE] + (~RA_even[4*j*BYTE +: 4*BYTE]) + 1; // two's complement subtraction
             end
         end
         12: begin // SFI: Subtract from word immediate
             t = {{22{imm_10bit[0]}}, imm_10bit};
             for (int j=0; j<4; j++) begin
-                temp[4*j*BYTE +: 4*BYTE] = t + (~RA_even[4*j*BYTE +: 4*BYTE]) + 2; // two's complement subtraction
+                temp[4*j*BYTE +: 4*BYTE] = t + (~RA_even[4*j*BYTE +: 4*BYTE]) + 1; // two's complement subtraction
             end
         end
         13: begin //AND: bitwise AND
