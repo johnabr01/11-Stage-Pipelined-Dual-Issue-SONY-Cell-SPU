@@ -224,7 +224,6 @@ always_comb begin
                 BTA = {{14{imm_16bit[0]}}, imm_16bit, 2'b00};
                 BT = 1;
             end
-            else BTA = PC + 4;
         end
 
         90: begin //Branch if Zero Word
@@ -232,7 +231,6 @@ always_comb begin
                 BTA = {{14{imm_16bit[0]}}, imm_16bit, 2'b00} & 32'hFFFFFFFC;
                 BT = 1;
             end
-            else BTA = PC + 4;
         end
 
         91: begin //Branch IF Not Zero Halfword
@@ -240,7 +238,6 @@ always_comb begin
                 BTA = {{14{imm_16bit[0]}}, imm_16bit, 2'b00} & 32'hFFFFFFFC;
                 BT = 1;
             end
-            else BTA = PC + 4;
         end
 
         92: begin //Branch if Zero Halfword
@@ -248,48 +245,39 @@ always_comb begin
                 BTA = {{14{imm_16bit[0]}}, imm_16bit, 2'b00} & 32'hFFFFFFFC;
                 BT = 1;
             end
-            else BTA = PC + 4;
         end
 
         93: begin //Branch Indirect If Zero
             t = RA_odd[0:31] & 32'hFFFFFFFC; //RA bytes 0 to 3
-            u =  PC + 4;
             if (RT_odd[0:31] == 0) begin
                 BTA = t & 32'hFFFFFFFC;
                 BT = 1;
             end
-            else BTA = u;
         end
         
         94: begin //Branch Indirect If Not Zero
             t = RA_odd[0:31] & 32'hFFFFFFFC; //RA bytes 0 to 3
-            u =  PC + 4;
             if (RT_odd[0:31] != 0) begin 
                 BTA = t & 32'hFFFFFFFC;
                 BT = 1;
             end
-            else BTA = u;
         end
 
         95: begin //Branch Indirect If Zero Halfword
             t = RA_odd[0:31] & 32'hFFFFFFFC; //RA bytes 0 to 3
-            u =  PC + 4;
             if (RT_odd[16:31] != 0) begin 
                 BTA = t & 32'hFFFFFFFC;
                 BT = 1;
             end
-            else BTA = u;
         end
         
 
         96: begin //Branch Indirect If Not Zero Halfword
             t = RA_odd[0:31] & 32'hFFFFFFFC; //RA bytes 0 to 3
-            u =  PC + 4;
             if (RT_odd[16:31] != 0) begin 
                 BTA = t & 32'hFFFFFFFC;
                 BT = 1;
             end
-            else BTA = u;
         end
 
         98: begin //Nop load

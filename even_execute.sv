@@ -36,7 +36,10 @@ logic [0:31] u;
 
 logic [0:127] temp;
 
-logic [0 : 31] avgb;
+logic [0 : 15] avgb;
+
+logic [0:15] r_16bit;
+logic [0:31] r_32bit;
 
 int c;
 
@@ -88,15 +91,15 @@ always_comb begin
         end
         7: begin //SFX: subtract from extended
             for (int j = 0; j< 4; j++) begin
-                temp[j*4*BYTE +: 4*BYTE] = RA_even[j*4*BYTE +: 4*BYTE] + (~RB_even[j*4*BYTE +: 4*BYTE]) + RT_even[32*j + 31];
+                temp[j*4*BYTE +: 4*BYTE] = (~RA_even[j*4*BYTE +: 4*BYTE]) + (RB_even[j*4*BYTE +: 4*BYTE]) + RT_even[32*j + 31];
             end
         end
         8: begin //BG: Borrow generate
             for (int j=0; j<16; j+=4) begin
                 if (RB_even[j*BYTE +: 4*BYTE] > RA_even[j*BYTE +: 4*BYTE]) begin
-                    temp[j*BYTE +: 4*BYTE] = '1; // borrow generated
+                    temp[j*BYTE +: 4*BYTE] = 1; // borrow generated
                 end else begin
-                    temp[j*BYTE +: 4*BYTE] = '0; // no borrow
+                    temp[j*BYTE +: 4*BYTE] = 0; // no borrow
                 end
             end
         end
@@ -202,10 +205,10 @@ always_comb begin
             s_8bit = RA_even[120:127];
             k = 0;
             for (int j=0; j<8; j++) begin
-                if (s_4bit[j] == 1'b0) begin
-                    temp[k*BYTE +: 2] = 16'h0000;
+                if (s_8bit[j] == 1'b0) begin
+                    temp[k*BYTE +: 2*BYTE] = 16'h0000;
                 end else begin
-                    temp[k*BYTE +: 2] = 16'hFFFF;
+                    temp[k*BYTE +: 2*BYTE] = 16'hFFFF;
                 end
                 k = k + 2;
             end
@@ -393,30 +396,33 @@ always_comb begin
         end
 
         45: begin //SHLH: Shift left halfword
+
             for (int j=0; j<8; j++) begin
                 s = RB_even [2*j*BYTE +: 2*BYTE] & 16'h001F; // only consider the lower 5 bits for shift amount
-                t = RA_even [2*j*BYTE +: 2*BYTE];
+                t_16bit = RA_even [2*j*BYTE +: 2*BYTE];
                 for (int b=0; b<16; b++) begin
                     if (b+s < 16) begin
-                        temp[b] = t[b+s];
+                        r_16bit[b] = t_16bit[b+s];
                     end else begin
-                        temp[b] = 1'b0;
+                        r_16bit[b]  = 1'b0;
                     end
                 end
+                temp[2*j*BYTE +: 2*BYTE] = r_16bit;
             end
         end
 
         46: begin //SHLHI: Shift left halfword immediate
             s = {{9{imm_7bit[0]}}, imm_7bit} & 16'h001F; // only consider the lower 5 bits for shift amount
             for (int j=0; j<8; j++) begin
-                t = RA_even [2*j*BYTE +: 2*BYTE];
+                t_16bit = RA_even [2*j*BYTE +: 2*BYTE];
                 for (int b=0; b<16; b++) begin
                     if (b+s < 16) begin
-                        temp[b] = t[b+s];
+                        r_16bit[b] = t_16bit[b+s];
                     end else begin
-                        temp[b] = 1'b0;
+                        r_16bit[b]  = 1'b0;
                     end
                 end
+                temp[2*j*BYTE +: 2*BYTE] = r_16bit;
             end
         end
 
@@ -426,11 +432,12 @@ always_comb begin
                 t = RA_even [4*j*BYTE +: 4*BYTE];
                 for (int b=0; b<32; b++) begin
                     if (b+s < 32) begin
-                        temp[b] = t[b+s];
+                        r_32bit[b] = t[b+s];
                     end else begin
-                        temp[b] = 1'b0;
+                        r_32bit[b] = 1'b0;
                     end
                 end
+                temp[4*j*BYTE +: 4*BYTE] = r_32bit;
             end
         end
 
@@ -440,11 +447,12 @@ always_comb begin
                 t = RA_even [4*j*BYTE +: 4*BYTE];
                 for (int b=0; b<32; b++) begin
                     if (b+s < 32) begin
-                        temp[b] = t[b+s];
+                        r_32bit[b] = t[b+s];
                     end else begin
-                        temp[b] = 1'b0;
+                        r_32bit[b] = 1'b0;
                     end
                 end
+                temp[4*j*BYTE +: 4*BYTE] = r_32bit;
             end
         end
 
@@ -454,11 +462,12 @@ always_comb begin
                 t_16bit = RA_even [2*j*BYTE +: 2*BYTE];
                 for (int b=0; b<16; b++) begin
                     if (b+s < 16) begin
-                        temp[b] = t[b+s];
+                        r_16bit[b] = t_16bit[b+s];
                     end else begin
-                        temp[b] = t[b+s-16];
+                        r_16bit[b] = t_16bit[b+s-16];
                     end
                 end
+                temp[2*j*BYTE +: 2*BYTE] = r_16bit;
             end
         end
 
@@ -468,11 +477,12 @@ always_comb begin
                 t_16bit = RA_even [2*j*BYTE +: 2*BYTE];
                 for (int b=0; b<16; b++) begin
                     if (b+s < 16) begin
-                        temp[b] = t[b+s];
+                        r_16bit[b] = t_16bit[b+s];
                     end else begin
-                        temp[b] = t[b+s-16];
+                        r_16bit[b] = t_16bit[b+s-16];
                     end
                 end
+                temp[2*j*BYTE +: 2*BYTE] = r_16bit;
             end
         end
 
@@ -482,11 +492,12 @@ always_comb begin
                 t = RA_even [4*j*BYTE +: 4*BYTE];
                 for (int b=0; b<32; b++) begin
                     if (b+s < 32) begin
-                        temp[b] = t[b+s];
+                        r_32bit[b] = t[b+s];
                     end else begin
-                        temp[b] = t[b+s-32];
+                        r_32bit[b] = t[b+s-32];
                     end
                 end
+                temp[4*j*BYTE +: 4*BYTE] = r_32bit;
             end
         end
 
@@ -496,33 +507,70 @@ always_comb begin
                 t = RA_even [4*j*BYTE +: 4*BYTE];
                 for (int b=0; b<32; b++) begin
                     if (b+s < 32) begin
-                        temp[b] = t[b+s];
+                        r_32bit[b] = t[b+s];
                     end else begin
-                        temp[b] = t[b+s-32];
+                        r_32bit[b] = t[b+s-32];
                     end
                 end
+                temp[4*j*BYTE +: 4*BYTE] = r_32bit;
             end
         end
 
         53: begin //FA: Floating Add
-            temp = $bitstoshortreal(RA_even) + $bitstoshortreal(RB_even);
+            for (int i = 0; i < 4; i++) begin
+                logic [31:0] a, b;
+                a = RA_even[i*4*BYTE +: 4*BYTE];
+                b = RB_even[i*4*BYTE +: 4*BYTE];
+                temp[i*4*BYTE +: 4*BYTE] = $shortrealtobits(
+                    $bitstoshortreal(a) + $bitstoshortreal(b)
+                );
+            end
         end
-        // 53: begin //FA: Floating Add
-        //     for (int i = 0; i < 4; i++) begin
-        //         temp[i*4*BYTE +: 4*BYTE] = $shortrealtobits($bitstoshortreal(RA_even[i*4*BYTE +: 4*BYTE]) + $bitstoshortreal(RB_even[i*4*BYTE +: 4*BYTE]));
-        //     end
-        // end
-        
+
         54: begin //FS: Floating Subtract
-            temp = $bitstoshortreal(RA_even) - $bitstoshortreal(RB_even);
+            for (int i = 0; i < 4; i++) begin
+                logic [31:0] a, b;
+                a = RA_even[i*4*BYTE +: 4*BYTE];
+                b = RB_even[i*4*BYTE +: 4*BYTE];
+                temp[i*4*BYTE +: 4*BYTE] = $shortrealtobits(
+                    $bitstoshortreal(a) - $bitstoshortreal(b)
+                );
+            end
         end
 
         55: begin //FM: Floating Multiply
-            temp = $bitstoshortreal(RA_even) * $bitstoshortreal(RB_even);
+            for (int i = 0; i < 4; i++) begin
+                logic [31:0] a, b;
+                a = RA_even[i*4*BYTE +: 4*BYTE];
+                b = RB_even[i*4*BYTE +: 4*BYTE];
+                temp[i*4*BYTE +: 4*BYTE] = $shortrealtobits(
+                    $bitstoshortreal(a) * $bitstoshortreal(b)
+                );
+            end
         end
 
         56: begin //FMA: Floating Multiply and Add
-            temp = ($bitstoshortreal(RA_even) * $bitstoshortreal(RB_even)) + $bitstoshortreal(RC_even);
+            for (int i = 0; i < 4; i++) begin
+                logic [31:0] a, b, c;
+                a = RA_even[i*4*BYTE +: 4*BYTE];
+                b = RB_even[i*4*BYTE +: 4*BYTE];
+                c = RC_even[i*4*BYTE +: 4*BYTE];
+                temp[i*4*BYTE +: 4*BYTE] = $shortrealtobits(
+                    ($bitstoshortreal(a) * $bitstoshortreal(b)) + $bitstoshortreal(c)
+                );
+            end
+        end
+
+        57: begin //FMS: Floating Multiply and Subtract
+            for (int i = 0; i < 4; i++) begin
+                logic [31:0] a, b, c;
+                a = RA_even[i*4*BYTE +: 4*BYTE];
+                b = RB_even[i*4*BYTE +: 4*BYTE];
+                c = RC_even[i*4*BYTE +: 4*BYTE];
+                temp[i*4*BYTE +: 4*BYTE] = $shortrealtobits(
+                    ($bitstoshortreal(a) * $bitstoshortreal(b)) - $bitstoshortreal(c)
+                );
+            end
         end
 
         57: begin //FMS: Floating Multiply and Subtract
@@ -583,9 +631,8 @@ always_comb begin
         65 : begin //AVGB: Average Bytes
              for(int i = 0; i < 16; i++) begin
                 avgb = ({8'b0, RA_even[i * BYTE +: BYTE]} + 
-                {8'b0, RB_even[i * BYTE +: BYTE]} + 16'd1);
-                temp[i * BYTE +: BYTE] = 
-                avgb[7:14];
+                        {8'b0, RB_even[i * BYTE +: BYTE]} + 16'd1);
+                temp[i * BYTE +: BYTE] = avgb[7:14];
              end
 
         end
