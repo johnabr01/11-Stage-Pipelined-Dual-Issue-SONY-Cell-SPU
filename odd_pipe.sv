@@ -5,13 +5,21 @@ module odd_pipe (
     input rst_n,
     input [0:31] PC,
     input packet pkt_in, //biggest packet containing all the control signals and data from the decode stage.
-    output logic [0:31] PC_out,
-    output logic canForwardOdd[0:7],
-    output odd_packet odd_pkt_pipes[0:7]
+    output logic [0:31] BTA,
+    output logic BT,
+    output logic canForwardOdd[0:6],
+    output odd_packet odd_pkt_pipes[0:6]
 );
 
 logic [0:127] data_out_odd;
-logic [0:3] curr_stage_counter [0:7];
+logic [0:3] curr_stage_counter [0:6];
+
+logic [0:31] computed_BTA;
+
+logic computed_BT;
+
+logic [0:31] computed_BTA_pipe;
+logic computed_BT_pipe;
 
 odd_packet pipeline_packet;
 
@@ -22,7 +30,6 @@ always_comb begin
     pipeline_packet.RegWr              = pkt_in.RegWrite;
     pipeline_packet.dest_addr          = pkt_in.RT_dest_addr;
     pipeline_packet.curr_stage_counter = 0;
-    pipeline_packet.PC                 = PC_out;
 end
 
 odd_execute u_odd_execute (
@@ -34,7 +41,8 @@ odd_execute u_odd_execute (
     .instr_odd       (pkt_in.instr),
     .ID_odd          (pkt_in.ID),
     .RT_odd          (pkt_in.RT_read_data),
-    .PC_out          (PC_out),
+    .BTA          (computed_BTA),
+    .BT             (computed_BT),
     //.RT_odd_dest_data(RT_dest_data),
     .data_out_odd    (data_out_odd)
 );
@@ -47,24 +55,28 @@ odd_execute u_odd_execute (
 //     .RegWr(pkt_in.RegWrite_odd),
 //     .dest_addr(pkt_in.RT_dest_addr),
 //     .curr_stage_counter(curr_stage_counter),
-//     .PC(PC_out)
+//     .PC(BTA)
 // );
 
 always_ff @(posedge clk) begin
     if(!rst_n) begin
-        for(int i = 0; i < 8; i++) begin
+        for(int i = 0; i < 7; i++) begin
             odd_pkt_pipes[i].unit_ID <= 0;
             odd_pkt_pipes[i].result <= 0;
             odd_pkt_pipes[i].latency <= 0;
             odd_pkt_pipes[i].RegWr <= 0;
             odd_pkt_pipes[i].dest_addr <= 0;
             odd_pkt_pipes[i].curr_stage_counter <= 0;
+            computed_BTA_pipe <= 0;
+            computed_BT_pipe <= 0;
         end
     end
     else begin
+        computed_BT_pipe <= computed_BT;
+        computed_BTA_pipe <= computed_BTA;
         odd_pkt_pipes[0] <= pipeline_packet;
         //odd_pkt_pipes[0].curr_stage_counter <= 0;
-        for(int i = 1; i < 8; i++) begin
+        for(int i = 1; i < 7; i++) begin
             odd_pkt_pipes[i] <= odd_pkt_pipes[i-1];
             //Logic to increment counter (or not increment it) based on 
             //if counter associated with stage reached the instruction's latency
@@ -75,10 +87,13 @@ always_ff @(posedge clk) begin
 end
 
 always_comb begin
-    for(int i = 0; i < 8; i++) begin
+    for(int i = 0; i < 7; i++) begin
         canForwardOdd[i] = ((odd_pkt_pipes[i].latency != 0) && 
-                            (odd_pkt_pipes[i].curr_stage_counter == odd_pkt_pipes[i].latency)) ? 1 : 0;
+                            (odd_pkt_pipes[i].curr_stage_counter >= odd_pkt_pipes[i].latency - 1)) ? 1 : 0;
     end
 end
+
+assign BTA = computed_BTA_pipe;
+assign BT = computed_BT_pipe;
 
 endmodule

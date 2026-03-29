@@ -77,7 +77,7 @@ always_comb begin
         end
         5: begin //ADDX: add extended
             for (int j = 0; j < 4; j++) begin
-                temp[j*4*BYTE +: 4*BYTE] = $signed(RA_even[j*4*BYTE +: 4*BYTE]) + $signed(RB_even[j*4*BYTE +: 4*BYTE]) + $signed(RT_even[32*j + 31]);
+                temp[j*4*BYTE +: 4*BYTE] = $signed(RA_even[j*4*BYTE +: 4*BYTE]) + $signed(RB_even[j*4*BYTE +: 4*BYTE]) + RT_even[32*j + 31];
             end
         end
         6: begin //CG: Carry generate
@@ -102,24 +102,24 @@ always_comb begin
         end
         9: begin // SFH: Subtract from halfword
             for (int j=0; j<8; j++) begin
-                temp[2*j*BYTE +: 2*BYTE] = RB_even[2*j*BYTE +: 2*BYTE] + (~RA_even[2*j*BYTE +: 2*BYTE]) + 1; // two's complement subtraction
+                temp[2*j*BYTE +: 2*BYTE] = RB_even[2*j*BYTE +: 2*BYTE] + (~RA_even[2*j*BYTE +: 2*BYTE]) + 2; // two's complement subtraction
             end
         end
         10: begin // SFHI: Subtract from halfword immediate
             t = {{6{imm_10bit[0]}}, imm_10bit}; 
             for (int j=0; j<8; j++) begin
-                temp[2*j*BYTE +: 2*BYTE] = t + (~RA_even[2*j*BYTE +: 2*BYTE]) + 1; // two's complement subtraction
+                temp[2*j*BYTE +: 2*BYTE] = t + (~RA_even[2*j*BYTE +: 2*BYTE]) + 2; // two's complement subtraction
             end
         end
         11: begin //SF: Subtract from word
             for (int j=0; j<4; j++) begin
-                temp[4*j*BYTE +: 4*BYTE] = RB_even[4*j*BYTE +: 4*BYTE] + (~RA_even[4*j*BYTE +: 4*BYTE]) + 1; // two's complement subtraction
+                temp[4*j*BYTE +: 4*BYTE] = RB_even[4*j*BYTE +: 4*BYTE] + (~RA_even[4*j*BYTE +: 4*BYTE]) + 2; // two's complement subtraction
             end
         end
         12: begin // SFI: Subtract from word immediate
             t = {{22{imm_10bit[0]}}, imm_10bit};
             for (int j=0; j<4; j++) begin
-                temp[4*j*BYTE +: 4*BYTE] = t + (~RA_even[4*j*BYTE +: 4*BYTE]) + 1; // two's complement subtraction
+                temp[4*j*BYTE +: 4*BYTE] = t + (~RA_even[4*j*BYTE +: 4*BYTE]) + 2; // two's complement subtraction
             end
         end
         13: begin //AND: bitwise AND
@@ -507,6 +507,11 @@ always_comb begin
         53: begin //FA: Floating Add
             temp = $bitstoshortreal(RA_even) + $bitstoshortreal(RB_even);
         end
+        // 53: begin //FA: Floating Add
+        //     for (int i = 0; i < 4; i++) begin
+        //         temp[i*4*BYTE +: 4*BYTE] = $shortrealtobits($bitstoshortreal(RA_even[i*4*BYTE +: 4*BYTE]) + $bitstoshortreal(RB_even[i*4*BYTE +: 4*BYTE]));
+        //     end
+        // end
         
         54: begin //FS: Floating Subtract
             temp = $bitstoshortreal(RA_even) - $bitstoshortreal(RB_even);

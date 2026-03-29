@@ -13,7 +13,8 @@ module odd_execute #(
     input [0:127] RT_odd,
     // output RegWrite_odd,
     // input MemWrite,
-    output logic [0:31] PC_out,
+    output logic [0:31] BTA,
+    output logic BT,
     output logic [0:127] data_out_odd
     //output logic [0:3] unit_ID_odd,
     //output logic [0:3] latency_odd
@@ -60,13 +61,14 @@ always_comb begin
     s_8bit = 0;
     r = 0;
     MemWrite = 0;
-    PC_out = 0;
+    BTA = 0;
+    BT = 0;
 
-    case(ID_odd)  //Shift left quadword by bits
+    case(ID_odd)  
         0: begin
             //hardware no op
         end
-        67: begin
+        67: begin //Shift left quadword by bits
             s_3bit = RB_odd[29:31];
             for(int b = 0; b < 127; b++) begin
                 if (b + s_3bit < 128) r[b]= RA_odd[b+s_3bit];
@@ -189,76 +191,105 @@ always_comb begin
         end
 
         84: begin //Branch Relative
-            PC_out = PC + $signed({{14{imm_16bit[0]}}, imm_16bit, 2'b00});    
+            BTA = PC + $signed({{14{imm_16bit[0]}}, imm_16bit, 2'b00});   
+            BT = 1; 
         end
 
         85: begin //Branch Absolute 
-            PC_out = {{14{imm_16bit[0]}}, imm_16bit, 2'b00};
+            BTA = {{14{imm_16bit[0]}}, imm_16bit, 2'b00};
+            BT = 1;
         end
 
         86: begin //Branch Relative and Set Link
             r[0:31] = PC + 4; //Address of the next instruction
             r[32: 127] = 0;
-            PC_out = PC + $signed({{14{imm_16bit[0]}}, imm_16bit, 2'b00});
+            BTA = PC + $signed({{14{imm_16bit[0]}}, imm_16bit, 2'b00});
+            BT = 1;
         end
         
         87: begin //Branch Absolute and Set Link
             r[0:31] = PC + 4; //Address of the next instruction
             r[32:127] = 0;
-            PC_out = {{14{imm_16bit[0]}}, imm_16bit, 2'b00};
+            BTA = {{14{imm_16bit[0]}}, imm_16bit, 2'b00};
+            BT = 1;
         end
 
         88: begin //Branch Indirect
-            PC_out = RA_odd[0:31] &  32'hFFFFFFFC; //RA bytes 0 to 3
+            BTA = RA_odd[0:31] &  32'hFFFFFFFC; //RA bytes 0 to 3
+            BT = 1;
         end
 
         89: begin //Branch If Not Zero Word
-            if (RT_odd[0:31] != 0) PC_out = {{14{imm_16bit[0]}}, imm_16bit, 2'b00};
-            else PC_out = PC + 4;
+            if (RT_odd[0:31] != 0) begin
+                BTA = {{14{imm_16bit[0]}}, imm_16bit, 2'b00};
+                BT = 1;
+            end
+            else BTA = PC + 4;
         end
 
         90: begin //Branch if Zero Word
-            if (RT_odd[0:31] == 0) PC_out = {{14{imm_16bit[0]}}, imm_16bit, 2'b00} & 32'hFFFFFFFC;
-            else PC_out = PC + 4;
+            if (RT_odd[0:31] == 0) begin 
+                BTA = {{14{imm_16bit[0]}}, imm_16bit, 2'b00} & 32'hFFFFFFFC;
+                BT = 1;
+            end
+            else BTA = PC + 4;
         end
 
         91: begin //Branch IF Not Zero Halfword
-            if (RT_odd[16:31] != 0) PC_out = {{14{imm_16bit[0]}}, imm_16bit, 2'b00} & 32'hFFFFFFFC;
-            else PC_out = PC + 4;
+            if (RT_odd[16:31] != 0) begin
+                BTA = {{14{imm_16bit[0]}}, imm_16bit, 2'b00} & 32'hFFFFFFFC;
+                BT = 1;
+            end
+            else BTA = PC + 4;
         end
 
         92: begin //Branch if Zero Halfword
-            if (RT_odd[16:31] == 0) PC_out = {{14{imm_16bit[0]}}, imm_16bit, 2'b00} & 32'hFFFFFFFC;
-            else PC_out = PC + 4;
+            if (RT_odd[16:31] == 0) begin
+                BTA = {{14{imm_16bit[0]}}, imm_16bit, 2'b00} & 32'hFFFFFFFC;
+                BT = 1;
+            end
+            else BTA = PC + 4;
         end
 
         93: begin //Branch Indirect If Zero
             t = RA_odd[0:31] & 32'hFFFFFFFC; //RA bytes 0 to 3
             u =  PC + 4;
-            if (RT_odd[0:31] == 0) PC_out = t & 32'hFFFFFFFC;
-            else PC_out = u;
+            if (RT_odd[0:31] == 0) begin
+                BTA = t & 32'hFFFFFFFC;
+                BT = 1;
+            end
+            else BTA = u;
         end
         
         94: begin //Branch Indirect If Not Zero
             t = RA_odd[0:31] & 32'hFFFFFFFC; //RA bytes 0 to 3
             u =  PC + 4;
-            if (RT_odd[0:31] != 0) PC_out = t & 32'hFFFFFFFC;
-            else PC_out = u;
+            if (RT_odd[0:31] != 0) begin 
+                BTA = t & 32'hFFFFFFFC;
+                BT = 1;
+            end
+            else BTA = u;
         end
 
         95: begin //Branch Indirect If Zero Halfword
             t = RA_odd[0:31] & 32'hFFFFFFFC; //RA bytes 0 to 3
             u =  PC + 4;
-            if (RT_odd[16:31] != 0) PC_out = t & 32'hFFFFFFFC;
-            else PC_out = u;
+            if (RT_odd[16:31] != 0) begin 
+                BTA = t & 32'hFFFFFFFC;
+                BT = 1;
+            end
+            else BTA = u;
         end
         
 
         96: begin //Branch Indirect If Not Zero Halfword
             t = RA_odd[0:31] & 32'hFFFFFFFC; //RA bytes 0 to 3
             u =  PC + 4;
-            if (RT_odd[16:31] != 0) PC_out = t & 32'hFFFFFFFC;
-            else PC_out = u;
+            if (RT_odd[16:31] != 0) begin 
+                BTA = t & 32'hFFFFFFFC;
+                BT = 1;
+            end
+            else BTA = u;
         end
 
         98: begin //Nop load
