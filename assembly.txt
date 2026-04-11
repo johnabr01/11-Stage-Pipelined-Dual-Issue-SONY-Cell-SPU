@@ -1,4 +1,5 @@
 ahi r2, r0, 1  
 ahi r3, r0, 2
 ahi r4, r0, 3
-ahi r5, r2, 3
+shlqbii r4, r2, 1
+bi r4
