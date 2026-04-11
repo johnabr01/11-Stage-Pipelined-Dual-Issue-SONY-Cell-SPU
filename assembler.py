@@ -114,6 +114,9 @@ instruction_table = {
     "nop":  {"type": "SPECIAL", "opcode": 0b01000000001},
     "lnop": {"type": "SPECIAL", "opcode": 0b00000000001},
     "stop": {"type": "SPECIAL", "opcode": 0b00000000000}
+
+
+    #IMPLEMENT RI18 instruction, i.e. ila
 }
 
 def check_width(value, bits, name):

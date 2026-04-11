@@ -68,11 +68,28 @@ module top_level (
         .flush(1'b0) //MAKE SURE TO CHANGE AFTER IMPLEMENTING DECODE LOGIC
     );
     
-    decode u_decode_logic(
-        input [0:31] instr1,
-        input [0:31] instr2,
-        output
-    );
+    decode_stage u_decode_stage (
+    .clk            (clk),
+    .rst_n          (rst_n),
+
+    .instr_even     (instr1),
+    .instr_odd      (instr2),
+
+    .RT_even        (RT_addr_even_id),
+    .RA_even        (RA_addr_even_id),
+    .RB_even        (RB_addr_even_id),
+    .RC_even        (RC_addr_even_id),
+    .ID_even        (ID_even_id),
+    .Latency_even   (Latency_even_id),
+    .RegWrite_even  (RegWriteEven_id),
+
+    .RT_odd         (RT_addr_odd_id),
+    .RA_odd         (RA_addr_odd_id),
+    .RB_odd         (RB_addr_odd_id),
+    .ID_odd         (ID_odd_id),
+    .Latency_odd    (Latency_odd_id),
+    .RegWrite_odd   (RegWriteOdd_id)
+);
 
 
     ID_EX_reg u_ID_EX_reg (
