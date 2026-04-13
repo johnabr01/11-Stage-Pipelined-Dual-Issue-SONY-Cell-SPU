@@ -10,7 +10,7 @@ module instruction_memory(
         $readmemh("instructions.txt", ram);
     end
 
-    assign instr1 = ram[address];
-    assign instr2 = ram[address+1];
+    assign instr1 = ram[address[0:29]];
+    assign instr2 = ram[address[0:29] + 1];
 
 endmodule

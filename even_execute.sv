@@ -659,8 +659,6 @@ always_comb begin
 
         97: begin //No op execute
         end
-        
-        default: temp = 0;
     endcase
 end
 

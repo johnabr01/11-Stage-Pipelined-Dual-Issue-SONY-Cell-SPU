@@ -1,26 +1,22 @@
-module decode_stage (
+module decode_stage #(
+    localparam ODDTYPE = 0;
+    localparam EVENTYPE = 1;
+    localparam STOP = 2;
+)(
     input  logic        clk,
     input  logic        rst_n,
 
-    input  logic [0:31] instr_even,
-    input  logic [0:31] instr_odd,
+    input  logic [0:31] instr,
 
-    // Even pipe decoded outputs
-    output logic [0:6]  RT_even,
-    output logic [0:6]  RA_even,
-    output logic [0:6]  RB_even,
-    output logic [0:6]  RC_even,
-    output logic [0:6]  ID_even,
-    output logic [0:3]  Latency_even,
-    output logic        RegWrite_even
-
-    // Odd pipe decoded outputs
-    output logic [0:6]  RT_odd,
-    output logic [0:6]  RA_odd,
-    output logic [0:6]  RB_odd,
-    output logic [0:6]  ID_odd,
-    output logic [0:3]  Latency_odd,
-    output logic        RegWrite_odd
+    //decoded outputs
+    output logic [0:6]  RT,
+    output logic [0:6]  RA,
+    output logic [0:6]  RB,
+    output logic [0:6]  RC,
+    output logic [0:6]  ID,
+    output logic [0:3]  Latency,
+    output logic        RegWrite,
+    ouptut logic        Instr_type
 );
 
     localparam logic [0:6]
@@ -60,56 +56,56 @@ module decode_stage (
         ID_NOP       = 7'd97,  ID_LNOP     = 7'd98,  ID_STOP     = 7'd99;
         
 
-    // Even intruction decode
+    // intruction decode
     always_comb begin
-        RT_even = 7'h0;
-        RA_even = 7'h0;
-        RB_even = 7'h0;
-        RC_even = 7'h0;
-        ID_even = ID_HWNOP;
-        RegWrite_even = 1'b1;
-        Latency_even = 4'h0;
+        RT = 7'h0;
+        RA = 7'h0;
+        RB = 7'h0;
+        RC = 7'h0;
+        ID = ID_HWNOP;
+        RegWrite = 1'b1;
+        Latency = 4'h0;
 
-        casez (instr_even[0:10])
+        casez (instr[0:10])
             // -----------------------------------------------------------------
             // RRR (4-bit opcode): RT=[4:10] RB=[11:17] RA=[18:24] RC=[25:31]
             // -----------------------------------------------------------------
             11'b1110???????: begin  // fma
-                Latency_even = 7;
-                RT_even = instr_even[4:10];  RB_even = instr_even[11:17];
-                RA_even = instr_even[18:24]; RC_even = instr_even[25:31];
-                ID_even = ID_FMA;
+                Latency = 7;
+                RT = instr[4:10];  RB = instr[11:17];
+                RA = instr[18:24]; RC = instr[25:31];
+                ID = ID_FMA; Instr_type = EVENTYPE;
             end
             11'b1111???????: begin  // fms
-                Latency_even = 7;
-                RT_even = instr_even[4:10];  RB_even = instr_even[11:17];
-                RA_even = instr_even[18:24]; RC_even = instr_even[25:31];
-                ID_even = ID_FMS;
+                Latency = 7;
+                RT = instr[4:10];  RB = instr[11:17];
+                RA = instr[18:24]; RC = instr[25:31];
+                ID = ID_FMS; Instr_type = EVENTYPE;
             end
             11'b1100???????: begin  // mpya
-                Latency_even = 8;
-                RT_even = instr_even[4:10];  RB_even = instr_even[11:17];
-                RA_even = instr_even[18:24]; RC_even = instr_even[25:31];
-                ID_even = ID_MPYA;
+                Latency = 8;
+                RT = instr[4:10];  RB = instr[11:17];
+                RA = instr[18:24]; RC = instr[25:31];
+                ID = ID_MPYA; Instr_type = EVENTYPE;
             end
 
             // -----------------------------------------------------------------
             // RI18 (7-bit opcode): RT=[25:31]
             // -----------------------------------------------------------------
             11'b0100001????: begin  // ila  //IMPLEMENT IN THE ASSEMBLER
-                Latency_even = 3;
-                RT_even = instr_even[25:31];
-                ID_even = ID_ILA;
+                Latency = 3;
+                RT = instr[25:31];
+                ID = ID_ILA; Instr_type = EVENTYPE;
             end
 
             // -----------------------------------------------------------------
             // RI16 (9-bit opcode): RT=[25:31]
             // -----------------------------------------------------------------
-            11'b010000011??: begin Latency_even = 3; RT_even = instr_even[25:31]; ID_even = ID_ILH;   end
-            11'b010000010??: begin Latency_even = 3; RT_even = instr_even[25:31]; ID_even = ID_ILHU;  end
-            11'b010000001??: begin Latency_even = 3; RT_even = instr_even[25:31]; ID_even = ID_IL;    end
-            11'b011000001??: begin Latency_even = 3; RT_even = instr_even[25:31]; ID_even = ID_IOHL;  end
-            11'b001100101??: begin Latency_even = 3; RT_even = instr_even[25:31]; ID_even = ID_FSMBI; end
+            11'b010000011??: begin Latency = 3; RT = instr[25:31]; ID = ID_ILH; Instr_type = EVENTYPE;   end
+            11'b010000010??: begin Latency = 3; RT = instr[25:31]; ID = ID_ILHU; Instr_type = EVENTYPE;  end
+            11'b010000001??: begin Latency = 3; RT = instr[25:31]; ID = ID_IL; Instr_type = EVENTYPE;    end
+            11'b011000001??: begin Latency = 3; RT = instr[25:31]; ID = ID_IOHL; Instr_type = EVENTYPE;  end
+            11'b001100101??: begin Latency = 3; RT = instr[25:31]; ID = ID_FSMBI; Instr_type = EVENTYPE; end
             
             
             // -----------------------------------------------------------------
@@ -117,423 +113,410 @@ module decode_stage (
             // Bottom 3 bits of window are the top 3 bits of I10 -> don't-care
             // -----------------------------------------------------------------
             11'b00011101???: begin  // ahi
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_AHI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_AHI; Instr_type = EVENTYPE;
             end
             11'b00011100???: begin  // ai
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_AI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_AI; Instr_type = EVENTYPE;
             end
             11'b00001101???: begin  // sfhi
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_SFHI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_SFHI; Instr_type = EVENTYPE;
             end
             11'b00001100???: begin  // sfi
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_SFI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_SFI; Instr_type = EVENTYPE;
             end
             11'b00010101???: begin  // andhi
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_ANDHI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_ANDHI; Instr_type = EVENTYPE;
             end
             11'b00010100???: begin  // andi
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_ANDI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_ANDI; Instr_type = EVENTYPE;
             end
             11'b00000101???: begin  // orhi
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_ORHI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_ORHI; Instr_type = EVENTYPE;
             end
             11'b00000100???: begin  // ori
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_ORI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_ORI; Instr_type = EVENTYPE;
             end
             11'b01000101???: begin  // xorhi
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_XORHI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_XORHI; Instr_type = EVENTYPE;
             end
             11'b01000100???: begin  // xori
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_XORI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_XORI; Instr_type = EVENTYPE;
             end
             11'b01111101???: begin  // ceqhi
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_CEQHI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_CEQHI; Instr_type = EVENTYPE;
             end
             11'b01111100???: begin  // ceqi
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_CEQI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_CEQI; Instr_type = EVENTYPE;
             end
             11'b01001101???: begin  // cgthi
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_CGTHI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_CGTHI; Instr_type = EVENTYPE;
             end
             11'b01001100???: begin  // cgti
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_CGTI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_CGTI; Instr_type = EVENTYPE;
             end
             11'b01011101???: begin  // clgthi
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_CLGTHI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_CLGTHI; Instr_type = EVENTYPE;
             end
             11'b01011100???: begin  // clgti
-                Latency_even = 3; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_CLGTI;
+                Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_CLGTI; Instr_type = EVENTYPE;
             end
             11'b01110100???: begin  // mpyi
-                Latency_even = 8; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_MPYI;
+                Latency = 8; RT = instr[25:31]; RA = instr[18:24]; ID = ID_MPYI; Instr_type = EVENTYPE;
             end
             11'b01110101???: begin  // mpyui
-                Latency_even = 8; RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_MPYUI;
+                Latency = 8; RT = instr[25:31]; RA = instr[18:24]; ID = ID_MPYUI; Instr_type = EVENTYPE;
             end
 
             // -----------------------------------------------------------------
             // RR (11-bit opcode): RT=[25:31] RA=[18:24] RB=[11:17]
             // -----------------------------------------------------------------
             11'b00011001000: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_AH;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_AH; Instr_type = EVENTYPE;
             end
             11'b00011000000: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_A;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_A; Instr_type = EVENTYPE;
             end
             11'b01101000000: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_ADDX;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_ADDX; Instr_type = EVENTYPE;
             end
             11'b00011000010: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_CG;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_CG; Instr_type = EVENTYPE;
             end
             11'b01101000001: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_SFX;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_SFX; Instr_type = EVENTYPE;
             end
             11'b00001000010: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_BG;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_BG; Instr_type = EVENTYPE;
             end
             11'b00001001000: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_SFH;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_SFH; Instr_type = EVENTYPE;
             end
             11'b00001000000: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_SF;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_SF; Instr_type = EVENTYPE;
             end
             11'b00011000001: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_AND;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_AND; Instr_type = EVENTYPE;
             end
             11'b00001000001: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_OR;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_OR; Instr_type = EVENTYPE;
             end
             11'b01001000001: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_XOR;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_XOR; Instr_type = EVENTYPE;
             end
             11'b00011001001: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_NAND;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_NAND; Instr_type = EVENTYPE;
             end
             11'b00001001001: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_NOR;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_NOR; Instr_type = EVENTYPE;
             end
             11'b01111001000: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_CEQH;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_CEQH; Instr_type = EVENTYPE;
             end
             11'b01111000000: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_CEQ;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_CEQ; Instr_type = EVENTYPE;
             end
             11'b01001001000: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_CGTH;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_CGTH; Instr_type = EVENTYPE;
             end
             11'b01001000000: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_CGT;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_CGT; Instr_type = EVENTYPE;
             end
             11'b01011001000: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_CLGTH;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_CLGTH; Instr_type = EVENTYPE;
             end
             11'b01011000000: begin
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_CLGT;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_CLGT; Instr_type = EVENTYPE;
             end
             11'b00001011111: begin
-                Latency_even = 4; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_SHLH;
+                Latency = 4; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_SHLH; Instr_type = EVENTYPE;
             end
             11'b00001011011: begin
-                Latency_even = 4; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_SHL;
+                Latency = 4; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_SHL; Instr_type = EVENTYPE;
             end
             11'b00001011100: begin
-                Latency_even = 4; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_ROTH;
+                Latency = 4; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_ROTH; Instr_type = EVENTYPE;
             end
             11'b00001011000: begin
-                Latency_even = 4; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_ROT;
+                Latency = 4; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_ROT; Instr_type = EVENTYPE;
             end
             11'b01011000100: begin
-                Latency_even = 7; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_FA;
+                Latency = 7; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_FA; Instr_type = EVENTYPE;
             end
             11'b01011000101: begin
-                Latency_even = 7; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_FS;
+                Latency = 7; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_FS; Instr_type = EVENTYPE;
             end
             11'b01011000110: begin
-                Latency_even = 7; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_FM;
+                Latency = 7; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_FM; Instr_type = EVENTYPE;
             end
             11'b01111000100: begin
-                Latency_even = 8; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_MPY;
+                Latency = 8; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_MPY; Instr_type = EVENTYPE;
             end
             11'b01111001100: begin
-                Latency_even = 8; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_MPYU;
+                Latency = 8; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_MPYU; Instr_type = EVENTYPE;
             end
             11'b00001010011: begin
-                Latency_even = 4; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_ABSDB;
+                Latency = 4; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_ABSDB; Instr_type = EVENTYPE;
             end
             11'b00011010011: begin
-                Latency_even = 4; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_AVGB;
+                Latency = 4; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_AVGB; Instr_type = EVENTYPE;
             end
             11'b01001010011: begin
-                Latency_even = 4; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24];
-                RB_even = instr_even[11:17]; ID_even = ID_SUMB;
+                Latency = 4; 
+                RT = instr[25:31]; RA = instr[18:24];
+                RB = instr[11:17]; ID = ID_SUMB; Instr_type = EVENTYPE;
             end
 
             // -----------------------------------------------------------------
             // RI7 even-pipe (11-bit opcode): RT=[25:31] RA=[18:24]
             // -----------------------------------------------------------------
             11'b00001111111: begin
-                Latency_even = 4; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_SHLHI;
+                Latency = 4; 
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_SHLHI; Instr_type = EVENTYPE;
             end
             11'b00001111011: begin
-                Latency_even = 4; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_SHLI;
+                Latency = 4; 
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_SHLI; Instr_type = EVENTYPE;
             end
             11'b00001111100: begin
-                Latency_even = 4; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_ROTHI;
+                Latency = 4; 
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_ROTHI; Instr_type = EVENTYPE;
             end
             11'b00001111000: begin
-                Latency_even = 4; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_ROTI;
+                Latency = 4; 
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_ROTI; Instr_type = EVENTYPE;
             end
             11'b01010100101: begin  // clz
-            Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_CLZ;
+            Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_CLZ; Instr_type = EVENTYPE;
             end
             11'b00110110101: begin  // fsmh
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_FSMH;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_FSMH; Instr_type = EVENTYPE;
             end
             11'b00110110100: begin  // fsm
-                Latency_even = 3; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_FSM;
+                Latency = 3; 
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_FSM; Instr_type = EVENTYPE;
             end
             11'b01010110100: begin  // cntb
-                Latency_even = 4; 
-                RT_even = instr_even[25:31]; RA_even = instr_even[18:24]; ID_even = ID_CNTB;
+                Latency = 4; 
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_CNTB; Instr_type = EVENTYPE;
             end
+            
+            // -----------------------------------------------------------------
+            // ODD-INSTRUCTIONS
+            // -----------------------------------------------------------------
 
-            /// Special (even)
-            11'b01000000001: begin RegWrite_even = 0; ID_even = ID_NOP;  end  // nop
-            11'b00000000000: begin RegWrite_even = 0; ID_even = ID_STOP; end  // stop
-
-        endcase
-    end
-
-    // Odd piipe
-    always_comb begin
-        RT_odd = 7'h0;
-        RA_odd = 7'h0;
-        RB_odd = 7'h0;
-        ID_odd = ID_HWNOP;
-        RegWrite_odd = 1'b1;
-        Latency_odd = 4'h0;
-
-        casez (instr_odd[0:10])
             // -----------------------------------------------------------------
             // RI16 (9-bit opcode): RT=[25:31]
             // -----------------------------------------------------------------
             11'b001100001??: begin 
-                RT_odd = instr_odd[25:31]; ID_odd = ID_LQA;  
-                Latency_odd = 4'h7; 
+                RT = instr[25:31]; ID = ID_LQA;  
+                Latency = 4'h7; Instr_type = ODDTYPE;  
             end
             11'b001000001??: begin 
-                RegWrite_odd = 0; 
-                RT_odd = instr_odd[25:31]; ID_odd = ID_STQA; 
-                Latency_odd = 4'h7; 
+                RegWrite = 0; 
+                RT = instr[25:31]; ID = ID_STQA; 
+                Latency = 4'h7; Instr_type = ODDTYPE;  
             end
             11'b001100100??: begin 
-                RegWrite_odd = 0;
-                RT_odd = instr_odd[25:31]; ID_odd = ID_BR;
-                Latency_odd = 4'h2;
+                RegWrite = 0;
+                RT = instr[25:31]; ID = ID_BR;
+                Latency = 4'h2; Instr_type = ODDTYPE; 
             end
             11'b001100000??: begin
-                RegWrite_odd = 0;
-                RT_odd = instr_odd[25:31]; ID_odd = ID_BRA;  
-                Latency_odd = 4'h2; 
+                RegWrite = 0;
+                RT = instr[25:31]; ID = ID_BRA;  
+                Latency = 4'h2; Instr_type = ODDTYPE;  
             end
             11'b001100110??: begin 
-                RT_odd = instr_odd[25:31]; 
-                ID_odd = ID_BRSL;  
-                Latency_odd = 4'h2;
+                RT = instr[25:31]; Instr_type = ODDTYPE; 
+                ID = ID_BRSL;  
+                Latency = 4'h2;
             end
             11'b001100010??: begin 
-                RT_odd = instr_odd[25:31]; 
-                ID_odd = ID_BRASL; 
-                Latency_odd = 4'h2;
+                RT = instr[25:31];  Instr_type = ODDTYPE;  
+                ID = ID_BRASL; 
+                Latency = 4'h2;
             end
             11'b001000010??: begin 
-                RegWrite_odd = 0;
-                RT_odd = instr_odd[25:31]; 
-                ID_odd = ID_BRNZ;
-                Latency_odd = 4'h2;  
+                RegWrite = 0;
+                RT = instr[25:31]; Instr_type = ODDTYPE;  
+                ID = ID_BRNZ;
+                Latency = 4'h2;  
             end
             11'b001000000??: begin 
-                RegWrite_odd = 0;
-                RT_odd = instr_odd[25:31]; ID_odd = ID_BRZ;
-                Latency_odd = 4'h2;
+                RegWrite = 0; Instr_type = ODDTYPE; 
+                RT = instr[25:31]; ID = ID_BRZ;
+                Latency = 4'h2;
             end
             11'b001000110??: begin 
-                RegWrite_odd = 0; 
-                Latency_odd = 4'h2;
-                RT_even = instr_even[25:31]; ID_even = ID_BRHNZ; 
+                RegWrite = 0; 
+                Latency = 4'h2; Instr_type = ODDTYPE; 
+                RT = instr[25:31]; ID = ID_BRHNZ; 
             end
             11'b001000100??: begin 
-                RegWrite_odd = 0; 
-                Latency_odd = 4'h2;
-                RT_even = instr_even[25:31]; ID_even = ID_BRHZ;
+                RegWrite = 0; 
+                Latency = 4'h2; Instr_type = ODDTYPE; 
+                RT = instr[25:31]; ID = ID_BRHZ;
             end
 
             // -----------------------------------------------------------------
             // RI10 (8-bit opcode): RT=[25:31] RA=[18:24]
             // -----------------------------------------------------------------
             11'b00110100???: begin  // lqd
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; ID_odd = ID_LQD; Latency_odd = 4'h7;
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_LQD; Latency = 4'h7; Instr_type = ODDTYPE; 
             end
             11'b00100100???: begin  // stqd
-                RegWrite_odd = 0; 
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; ID_odd = ID_STQD; Latency_odd = 4'h7;
+                RegWrite = 0; 
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_STQD; Latency = 4'h7; Instr_type = ODDTYPE; 
             end
 
             // -----------------------------------------------------------------
             // RR (11-bit opcode): RT=[25:31] RA=[18:24] RB=[11:17]
             // -----------------------------------------------------------------
             11'b00111011011: begin
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; Latency_odd = 4'h4;
-                RB_odd = instr_odd[11:17]; ID_odd = ID_SHLQBI;
+                RT = instr[25:31]; RA = instr[18:24]; Latency = 4'h4;
+                RB = instr[11:17]; ID = ID_SHLQBI; Instr_type = ODDTYPE; 
             end
             11'b00111011111: begin
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; Latency_odd = 4'h4;
-                RB_odd = instr_odd[11:17]; ID_odd = ID_SHLQBY;
+                RT = instr[25:31]; RA = instr[18:24]; Latency = 4'h4;
+                RB = instr[11:17]; ID = ID_SHLQBY; Instr_type = ODDTYPE; 
             end
             11'b00111011100: begin
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; Latency_odd = 4'h4;
-                RB_odd = instr_odd[11:17]; ID_odd = ID_ROTQBY;
+                RT = instr[25:31]; RA = instr[18:24]; Latency = 4'h4;
+                RB = instr[11:17]; ID = ID_ROTQBY; Instr_type = ODDTYPE; 
             end
             11'b00111001100: begin
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; Latency_odd = 4'h4;
-                RB_odd = instr_odd[11:17]; ID_odd = ID_ROTQBYBI;
+                RT = instr[25:31]; RA = instr[18:24]; Latency = 4'h4;
+                RB = instr[11:17]; ID = ID_ROTQBYBI; Instr_type = ODDTYPE; 
             end
             11'b00111011000: begin
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; Latency_odd = 4'h4;
-                RB_odd = instr_odd[11:17]; ID_odd = ID_ROTQBI;
+                RT = instr[25:31]; RA = instr[18:24]; Latency = 4'h4;
+                RB = instr[11:17]; ID = ID_ROTQBI; Instr_type = ODDTYPE; 
             end
             11'b00111000100: begin
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; Latency_odd = 4'h7;
-                RB_odd = instr_odd[11:17]; ID_odd = ID_LQX;
+                RT = instr[25:31]; RA = instr[18:24]; Latency = 4'h7;
+                RB = instr[11:17]; ID = ID_LQX; Instr_type = ODDTYPE; 
             end
             11'b00101000100: begin
-                RegWrite_odd = 0;
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; Latency_odd = 4'h7;
-                RB_odd = instr_odd[11:17]; ID_odd = ID_STQX;
+                RegWrite = 0;
+                RT = instr[25:31]; RA = instr[18:24]; Latency = 4'h7;
+                RB = instr[11:17]; ID = ID_STQX; Instr_type = ODDTYPE; 
             end
 
             // -----------------------------------------------------------------
             // RI7 (11-bit opcode): RT=[25:31] RA=[18:24]
             // -----------------------------------------------------------------
             11'b00111111011: begin
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; ID_odd = ID_SHLQBII; Latency_odd = 4'h4;
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_SHLQBII; Latency = 4'h4; Instr_type = ODDTYPE; 
             end
             11'b00111111111: begin
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; ID_odd = ID_SHLQBYI; Latency_odd = 4'h4;
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_SHLQBYI; Latency = 4'h4; Instr_type = ODDTYPE; 
             end
             11'b00111111100: begin
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; ID_odd = ID_ROTQBYI; Latency_odd = 4'h4;
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_ROTQBYI; Latency = 4'h4; Instr_type = ODDTYPE; 
             end
             11'b00111111000: begin
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; ID_odd = ID_ROTQBII; Latency_odd = 4'h4;
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_ROTQBII; Latency = 4'h4; Instr_type = ODDTYPE; 
             end
             11'b00110101000: begin  // bi  (no RT)
-                RegWrite_odd = 0; Latency_odd = 4'h2;
-                RA_odd = instr_odd[18:24]; ID_odd = ID_BI;
+                RegWrite = 0; Latency = 4'h2;
+                RA = instr[18:24]; ID = ID_BI; Instr_type = ODDTYPE; 
             end
             11'b00100101000: begin  // biz (no RT)
-                RegWrite_odd = 0; Latency_odd = 4'h2;
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; ID_odd = ID_BIZ; 
+                RegWrite = 0; Latency = 4'h2;
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_BIZ; Instr_type = ODDTYPE;  
             end
             11'b00100101001: begin  // binz (no RT)
-                RegWrite_odd = 0; Latency_odd = 4'h2;
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; ID_odd = ID_BINZ; 
+                RegWrite = 0; Latency = 4'h2;
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_BINZ; Instr_type = ODDTYPE; 
             end
             11'b00100101010: begin  // bihz (no RT)
-                RegWrite_odd = 0; Latency_odd = 4'h2;
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; ID_odd = ID_BIHZ;
+                RegWrite = 0; Latency = 4'h2;
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_BIHZ; Instr_type = ODDTYPE; 
             end
             11'b00100101011: begin  // bihnz (no RT)
-                RegWrite_odd = 0; Latency_odd = 4'h2;
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; ID_odd = ID_BIHNZ;
+                RegWrite = 0; Latency = 4'h2;
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_BIHNZ; Instr_type = ODDTYPE; 
             end
             11'b00110110001: begin  // gbh
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; ID_odd = ID_GBH; Latency_odd = 4'h4;
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_GBH; Latency = 4'h4; Instr_type = ODDTYPE; 
             end
             11'b00110110000: begin  // gb
-                RT_odd = instr_odd[25:31]; RA_odd = instr_odd[18:24]; ID_odd = ID_GB; Latency_odd = 4'h4;
+                RT = instr[25:31]; RA = instr[18:24]; ID = ID_GB; Latency = 4'h4; Instr_type = ODDTYPE; 
             end
 
             // Special (Odd)
             11'b00000000001: begin 
-                RegWrite_odd = 0;
-                ID_odd = ID_LNOP; 
+                RegWrite = 0;
+                ID = ID_LNOP; Instr_type = ODDTYPE;  
             end  // lnop
-            11'b00000000000: begin 
-                RegWrite_odd = 0;
-                ID_odd = ID_STOP; 
-            end  // stop
 
+            /// Special (even)
+            11'b01000000001: begin RegWrite = 0; ID = ID_NOP; Instr_type = EVENTYPE; end  // nop
+
+            //STOP (both even and odd)
+            11'b00000000000: begin RegWrite = 0; ID = ID_STOP; Instr_type = STOP; end  // stop 
         endcase
     end
-
 endmodule
