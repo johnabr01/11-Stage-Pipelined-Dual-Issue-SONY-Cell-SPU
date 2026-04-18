@@ -5,7 +5,7 @@ module IF_ID_reg(
     input [0:31] instr1_in,
     input [0:31] instr2_in,
     input single_issue_stall_in,
-    input instr1_issued
+    input instr1_issued,
 
     output logic [0:31] instr1_out,
     output logic [0:31] instr2_out

@@ -24,7 +24,9 @@ module execute #(
     input [0:6]  RT_addr_odd,
     input RegWriteOdd_in,
     output logic [0:31] BTA,
-    output logic BT
+    output logic BT,
+    output odd_packet odd_pkt_pipes [0:LAST_STAGE - 1],
+    output even_packet even_pkt_pipes [0:LAST_STAGE - 1]
 );
 
 // --- Register File Outputs ---
@@ -39,13 +41,12 @@ logic [0:127] wdata_even,   wdata_odd;
 // --- Even Pipe ---
 packet        pkt_in_even;
 logic         canForwardEven[0 : LAST_STAGE - 1];
-even_packet   even_pkt_pipes [0:LAST_STAGE - 1];
 //logic [0:127] RT_even_dest_data;
 
 // --- Odd Pipe ---
 packet        pkt_in_odd;
 logic         canForwardOdd[0 : LAST_STAGE - 1];
-odd_packet    odd_pkt_pipes  [0:LAST_STAGE - 1];
+
 //logic [0:127] RT_odd_dest_data;
 
 

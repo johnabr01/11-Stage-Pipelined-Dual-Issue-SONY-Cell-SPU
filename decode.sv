@@ -16,7 +16,12 @@ module decode_stage #(
     output logic [0:6]  ID,
     output logic [0:3]  Latency,
     output logic        RegWrite,
-    ouptut logic        Instr_type
+    ouptut logic        Instr_type,
+
+    output logic        RT_source,
+    output logic        RA_source,
+    output logic        RB_source,
+    output logic        RC_source
 );
 
     localparam logic [0:6]
@@ -66,23 +71,32 @@ module decode_stage #(
         RegWrite = 1'b1;
         Latency = 4'h0;
 
+        RT_source = 0;
+        RA_source = 1;
+        RB_source = 1;
+        RC_source = 0;
+
+        //Note: default - RA & RB sources, RT and RC not sources
         casez (instr[0:10])
             // -----------------------------------------------------------------
             // RRR (4-bit opcode): RT=[4:10] RB=[11:17] RA=[18:24] RC=[25:31]
             // -----------------------------------------------------------------
             11'b1110???????: begin  // fma
+                RC_source = 1;
                 Latency = 7;
                 RT = instr[4:10];  RB = instr[11:17];
                 RA = instr[18:24]; RC = instr[25:31];
                 ID = ID_FMA; Instr_type = EVENTYPE;
             end
             11'b1111???????: begin  // fms
+                RC_source = 1;
                 Latency = 7;
                 RT = instr[4:10];  RB = instr[11:17];
                 RA = instr[18:24]; RC = instr[25:31];
                 ID = ID_FMS; Instr_type = EVENTYPE;
             end
             11'b1100???????: begin  // mpya
+                RC_source = 1;
                 Latency = 8;
                 RT = instr[4:10];  RB = instr[11:17];
                 RA = instr[18:24]; RC = instr[25:31];
@@ -93,6 +107,8 @@ module decode_stage #(
             // RI18 (7-bit opcode): RT=[25:31]
             // -----------------------------------------------------------------
             11'b0100001????: begin  // ila  //IMPLEMENT IN THE ASSEMBLER
+                RA_source = 0;
+                RB_source = 0;
                 Latency = 3;
                 RT = instr[25:31];
                 ID = ID_ILA; Instr_type = EVENTYPE;
@@ -101,11 +117,27 @@ module decode_stage #(
             // -----------------------------------------------------------------
             // RI16 (9-bit opcode): RT=[25:31]
             // -----------------------------------------------------------------
-            11'b010000011??: begin Latency = 3; RT = instr[25:31]; ID = ID_ILH; Instr_type = EVENTYPE;   end
-            11'b010000010??: begin Latency = 3; RT = instr[25:31]; ID = ID_ILHU; Instr_type = EVENTYPE;  end
-            11'b010000001??: begin Latency = 3; RT = instr[25:31]; ID = ID_IL; Instr_type = EVENTYPE;    end
-            11'b011000001??: begin Latency = 3; RT = instr[25:31]; ID = ID_IOHL; Instr_type = EVENTYPE;  end
-            11'b001100101??: begin Latency = 3; RT = instr[25:31]; ID = ID_FSMBI; Instr_type = EVENTYPE; end
+            11'b010000011??: begin 
+                RA_source = 0; RB_source = 0;
+                Latency = 3; RT = instr[25:31]; ID = ID_ILH; Instr_type = EVENTYPE;   
+            end
+            11'b010000010??: begin 
+                RA_source = 0; RB_source = 0;
+                Latency = 3; RT = instr[25:31]; ID = ID_ILHU; Instr_type = EVENTYPE;  
+            end
+            11'b010000001??: begin 
+                RA_source = 0; RB_source = 0;
+                Latency = 3; RT = instr[25:31]; ID = ID_IL; Instr_type = EVENTYPE;    
+            end
+            11'b011000001??: begin 
+                RT_source = 1;
+                RA_source = 0; RB_source = 0;
+                Latency = 3; RT = instr[25:31]; ID = ID_IOHL; Instr_type = EVENTYPE;  
+            end
+            11'b001100101??: begin 
+                RA_source = 0; RB_source = 0;
+                Latency = 3; RT = instr[25:31]; ID = ID_FSMBI; Instr_type = EVENTYPE; 
+            end
             
             
             // -----------------------------------------------------------------
@@ -113,57 +145,75 @@ module decode_stage #(
             // Bottom 3 bits of window are the top 3 bits of I10 -> don't-care
             // -----------------------------------------------------------------
             11'b00011101???: begin  // ahi
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_AHI; Instr_type = EVENTYPE;
             end
             11'b00011100???: begin  // ai
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_AI; Instr_type = EVENTYPE;
             end
             11'b00001101???: begin  // sfhi
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_SFHI; Instr_type = EVENTYPE;
             end
             11'b00001100???: begin  // sfi
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_SFI; Instr_type = EVENTYPE;
             end
             11'b00010101???: begin  // andhi
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_ANDHI; Instr_type = EVENTYPE;
             end
             11'b00010100???: begin  // andi
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_ANDI; Instr_type = EVENTYPE;
             end
             11'b00000101???: begin  // orhi
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_ORHI; Instr_type = EVENTYPE;
             end
             11'b00000100???: begin  // ori
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_ORI; Instr_type = EVENTYPE;
             end
             11'b01000101???: begin  // xorhi
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_XORHI; Instr_type = EVENTYPE;
             end
             11'b01000100???: begin  // xori
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_XORI; Instr_type = EVENTYPE;
             end
             11'b01111101???: begin  // ceqhi
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_CEQHI; Instr_type = EVENTYPE;
             end
             11'b01111100???: begin  // ceqi
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_CEQI; Instr_type = EVENTYPE;
             end
             11'b01001101???: begin  // cgthi
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_CGTHI; Instr_type = EVENTYPE;
             end
             11'b01001100???: begin  // cgti
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_CGTI; Instr_type = EVENTYPE;
             end
             11'b01011101???: begin  // clgthi
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_CLGTHI; Instr_type = EVENTYPE;
             end
             11'b01011100???: begin  // clgti
+                RB_source = 0;
                 Latency = 3; RT = instr[25:31]; RA = instr[18:24]; ID = ID_CLGTI; Instr_type = EVENTYPE;
             end
             11'b01110100???: begin  // mpyi
+                RB_source = 0;
                 Latency = 8; RT = instr[25:31]; RA = instr[18:24]; ID = ID_MPYI; Instr_type = EVENTYPE;
             end
             11'b01110101???: begin  // mpyui
+                RB_source = 0;
                 Latency = 8; RT = instr[25:31]; RA = instr[18:24]; ID = ID_MPYUI; Instr_type = EVENTYPE;
             end
 
@@ -181,6 +231,7 @@ module decode_stage #(
                 RB = instr[11:17]; ID = ID_A; Instr_type = EVENTYPE;
             end
             11'b01101000000: begin
+                RT_source = 1;
                 Latency = 3; 
                 RT = instr[25:31]; RA = instr[18:24];
                 RB = instr[11:17]; ID = ID_ADDX; Instr_type = EVENTYPE;
@@ -191,6 +242,7 @@ module decode_stage #(
                 RB = instr[11:17]; ID = ID_CG; Instr_type = EVENTYPE;
             end
             11'b01101000001: begin
+                RT_source = 1;
                 Latency = 3; 
                 RT = instr[25:31]; RA = instr[18:24];
                 RB = instr[11:17]; ID = ID_SFX; Instr_type = EVENTYPE;
@@ -330,34 +382,42 @@ module decode_stage #(
             // RI7 even-pipe (11-bit opcode): RT=[25:31] RA=[18:24]
             // -----------------------------------------------------------------
             11'b00001111111: begin
+                RB_source = 0;
                 Latency = 4; 
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_SHLHI; Instr_type = EVENTYPE;
             end
             11'b00001111011: begin
+                RB_source = 0;
                 Latency = 4; 
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_SHLI; Instr_type = EVENTYPE;
             end
             11'b00001111100: begin
+                RB_source = 0;
                 Latency = 4; 
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_ROTHI; Instr_type = EVENTYPE;
             end
             11'b00001111000: begin
+                RB_source = 0;
                 Latency = 4; 
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_ROTI; Instr_type = EVENTYPE;
             end
             11'b01010100101: begin  // clz
-            Latency = 3; 
+                RB_source = 0;
+                Latency = 3; 
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_CLZ; Instr_type = EVENTYPE;
             end
             11'b00110110101: begin  // fsmh
+                RB_source = 0;
                 Latency = 3; 
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_FSMH; Instr_type = EVENTYPE;
             end
             11'b00110110100: begin  // fsm
+                RB_source = 0;
                 Latency = 3; 
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_FSM; Instr_type = EVENTYPE;
             end
             11'b01010110100: begin  // cntb
+                RB_source = 0;
                 Latency = 4; 
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_CNTB; Instr_type = EVENTYPE;
             end
@@ -370,51 +430,66 @@ module decode_stage #(
             // RI16 (9-bit opcode): RT=[25:31]
             // -----------------------------------------------------------------
             11'b001100001??: begin 
+                RA_source = 0; RB_source = 0;
                 RT = instr[25:31]; ID = ID_LQA;  
                 Latency = 4'h7; Instr_type = ODDTYPE;  
             end
             11'b001000001??: begin 
+                RA_source = 0; RB_source = 0;
                 RegWrite = 0; 
                 RT = instr[25:31]; ID = ID_STQA; 
                 Latency = 4'h7; Instr_type = ODDTYPE;  
             end
             11'b001100100??: begin 
+                RA_source = 0; RB_source = 0;
                 RegWrite = 0;
                 RT = instr[25:31]; ID = ID_BR;
                 Latency = 4'h2; Instr_type = ODDTYPE; 
             end
             11'b001100000??: begin
+                RA_source = 0; RB_source = 0;
                 RegWrite = 0;
                 RT = instr[25:31]; ID = ID_BRA;  
                 Latency = 4'h2; Instr_type = ODDTYPE;  
             end
             11'b001100110??: begin 
+                RA_source = 0; RB_source = 0;
                 RT = instr[25:31]; Instr_type = ODDTYPE; 
                 ID = ID_BRSL;  
                 Latency = 4'h2;
             end
+            //UP TO HERE TO RESUME AGAIN FOR SOURCE REGISTERS
             11'b001100010??: begin 
+                RA_source = 0; RB_source = 0;
                 RT = instr[25:31];  Instr_type = ODDTYPE;  
                 ID = ID_BRASL; 
                 Latency = 4'h2;
             end
             11'b001000010??: begin 
+                RT_source = 1;
+                RA_source = 0; RB_source = 0;
                 RegWrite = 0;
                 RT = instr[25:31]; Instr_type = ODDTYPE;  
                 ID = ID_BRNZ;
                 Latency = 4'h2;  
             end
             11'b001000000??: begin 
+                RT_source = 1;
+                RA_source = 0; RB_source = 0;
                 RegWrite = 0; Instr_type = ODDTYPE; 
                 RT = instr[25:31]; ID = ID_BRZ;
                 Latency = 4'h2;
             end
             11'b001000110??: begin 
+                RT_source = 1;
+                RA_source = 0; RB_source = 0;
                 RegWrite = 0; 
                 Latency = 4'h2; Instr_type = ODDTYPE; 
                 RT = instr[25:31]; ID = ID_BRHNZ; 
             end
             11'b001000100??: begin 
+                RT_source = 1;
+                RA_source = 0; RB_source = 0;
                 RegWrite = 0; 
                 Latency = 4'h2; Instr_type = ODDTYPE; 
                 RT = instr[25:31]; ID = ID_BRHZ;
@@ -424,9 +499,12 @@ module decode_stage #(
             // RI10 (8-bit opcode): RT=[25:31] RA=[18:24]
             // -----------------------------------------------------------------
             11'b00110100???: begin  // lqd
+                RB_source = 0;
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_LQD; Latency = 4'h7; Instr_type = ODDTYPE; 
             end
             11'b00100100???: begin  // stqd
+                RT_source = 1;
+                RB_source = 0;
                 RegWrite = 0; 
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_STQD; Latency = 4'h7; Instr_type = ODDTYPE; 
             end
@@ -435,6 +513,7 @@ module decode_stage #(
             // RR (11-bit opcode): RT=[25:31] RA=[18:24] RB=[11:17]
             // -----------------------------------------------------------------
             11'b00111011011: begin
+
                 RT = instr[25:31]; RA = instr[18:24]; Latency = 4'h4;
                 RB = instr[11:17]; ID = ID_SHLQBI; Instr_type = ODDTYPE; 
             end
@@ -459,6 +538,7 @@ module decode_stage #(
                 RB = instr[11:17]; ID = ID_LQX; Instr_type = ODDTYPE; 
             end
             11'b00101000100: begin
+                RT_source = 1;
                 RegWrite = 0;
                 RT = instr[25:31]; RA = instr[18:24]; Latency = 4'h7;
                 RB = instr[11:17]; ID = ID_STQX; Instr_type = ODDTYPE; 
@@ -468,55 +548,73 @@ module decode_stage #(
             // RI7 (11-bit opcode): RT=[25:31] RA=[18:24]
             // -----------------------------------------------------------------
             11'b00111111011: begin
+                RB_source = 0;
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_SHLQBII; Latency = 4'h4; Instr_type = ODDTYPE; 
             end
             11'b00111111111: begin
+                RB_source = 0;
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_SHLQBYI; Latency = 4'h4; Instr_type = ODDTYPE; 
             end
             11'b00111111100: begin
+                RB_source = 0;
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_ROTQBYI; Latency = 4'h4; Instr_type = ODDTYPE; 
             end
             11'b00111111000: begin
+                RB_source = 0;
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_ROTQBII; Latency = 4'h4; Instr_type = ODDTYPE; 
             end
             11'b00110101000: begin  // bi  (no RT)
+                RB_source = 0;
                 RegWrite = 0; Latency = 4'h2;
                 RA = instr[18:24]; ID = ID_BI; Instr_type = ODDTYPE; 
             end
             11'b00100101000: begin  // biz (no RT)
+                RT_source = 1; RB_source = 0;
                 RegWrite = 0; Latency = 4'h2;
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_BIZ; Instr_type = ODDTYPE;  
             end
             11'b00100101001: begin  // binz (no RT)
+                RT_source = 1; RB_source = 0;
                 RegWrite = 0; Latency = 4'h2;
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_BINZ; Instr_type = ODDTYPE; 
             end
             11'b00100101010: begin  // bihz (no RT)
+                RT_source = 1; RB_source = 0;
                 RegWrite = 0; Latency = 4'h2;
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_BIHZ; Instr_type = ODDTYPE; 
             end
             11'b00100101011: begin  // bihnz (no RT)
+                RT_source = 1; RB_source = 0;
                 RegWrite = 0; Latency = 4'h2;
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_BIHNZ; Instr_type = ODDTYPE; 
             end
             11'b00110110001: begin  // gbh
+                RB_source = 0;
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_GBH; Latency = 4'h4; Instr_type = ODDTYPE; 
             end
             11'b00110110000: begin  // gb
+                RB_source = 0;
                 RT = instr[25:31]; RA = instr[18:24]; ID = ID_GB; Latency = 4'h4; Instr_type = ODDTYPE; 
             end
 
             // Special (Odd)
             11'b00000000001: begin 
+                RA_source = 0; RB_source = 0;
                 RegWrite = 0;
                 ID = ID_LNOP; Instr_type = ODDTYPE;  
             end  // lnop
 
             /// Special (even)
-            11'b01000000001: begin RegWrite = 0; ID = ID_NOP; Instr_type = EVENTYPE; end  // nop
+            11'b01000000001: begin 
+                RA_source = 0; RB_source = 0;
+                RegWrite = 0; ID = ID_NOP; Instr_type = EVENTYPE; 
+            end  // nop
 
             //STOP (both even and odd)
-            11'b00000000000: begin RegWrite = 0; ID = ID_STOP; Instr_type = STOP; end  // stop 
+            11'b00000000000: begin 
+                RA_source = 0; RB_source = 0;
+                RegWrite = 0; ID = ID_STOP; Instr_type = STOP; 
+            end  // stop 
         endcase
     end
 endmodule
