@@ -1,7 +1,9 @@
 import packet_pkg::*;
 
 module top_level #(
-    localparam LAST_STAGE = 7
+    localparam LAST_STAGE = 7,
+    localparam EVENTYPE = 0,
+    localparam ODDTYPE = 1
 )(
     input clk,
     input rst_n
@@ -114,7 +116,7 @@ module top_level #(
         .pc_next(pc_next),
         .clk(clk),
         .rst_n(rst_n),
-        .pc_write(1'b1), //MAKE SURE TO CHANGE AFTER IMPLEMENTING DECODE LOGIC
+        .pc_write(single_issue_stall), //@TODO: MAKE SURE TO CHANGE AFTER HAZARD LOGIC FOR BRANCH
         .pc_out(pc_out)
     );
 
@@ -127,19 +129,22 @@ module top_level #(
     assign instr1_id_in = (single_issue_stall) ? instr1 : instr1_comb;
     assign instr2_id_in = (single_issue_stall) ? instr2 : instr2_comb;
 
+    //stall means that if instr1_issued is 1, we repeat instruction inputs
+    assign single_issue_stall = instr1_issued || (instr1_data_hazard && !instr1_issued); 
+
     IF_ID_reg u_IF_ID_reg(
         .pc_in(pc_out),
         .clk(clk),
         .rst_n(rst_n),
         .instr1_in(instr1_id_in),
         .instr2_in(instr2_id_in),
-        .single_issue_stall_in(single_issue_stall), //from decode logic.
+        // .single_issue_stall_in(single_issue_stall), //from decode logic.
         .instr1_issued_in(instr1_issued),
         
         .instr1_out(instr1),
         .instr2_out(instr2),
         .pc_out(PC),
-        .single_issue_stall_out(single_issue_stall_prev), //output is the new input to our hazard/decode logic stage
+        // .single_issue_stall_out(single_issue_stall_prev), //output is the new input to our hazard/decode logic stage
         .instr1_issued_out(instr1_issued_prev)
         // .flush(1'b0), //MAKE SURE TO CHANGE AFTER IMPLEMENTING DECODE LOGIC
         // .stall(1'b0) //MAKE SURE TO CHANGE AFTER IMPLEMENTING DECODE LOGIC
@@ -166,7 +171,12 @@ module top_level #(
         .ID        (ID1),
         .Latency   (Latency1),
         .RegWrite  (RegWrite1),
-        .Instr_type(Instr_type1)
+        .Instr_type(Instr_type1),
+
+        .RT_source(RT_source_instr1),
+        .RA_source(RA_source_instr1),
+        .RB_source(RB_source_instr1),
+        .RC_source(RC_source_instr1)
     );
 
     decode_stage u2_decode (
@@ -182,7 +192,12 @@ module top_level #(
         .ID        (ID2),
         .Latency   (Latency2),
         .RegWrite  (RegWrite2),
-        .Instr_type(Instr_type2)
+        .Instr_type(Instr_type2),
+
+        .RT_source(RT_source_instr2),
+        .RA_source(RA_source_instr2),
+        .RB_source(RB_source_instr2),
+        .RC_source(RC_source_instr2)
     );
 
 
@@ -196,13 +211,21 @@ module top_level #(
             //If branch taken signal != branch prediction, flush EVERYTHING that precedes the branch, and set PC's next value to BTA
             //Moreover, if BRANCH target address is multiple of 4, don't attempt to issue first instruction
             //Branch flush has priority over single issue because we need to wipe those instructions anyways
-    assign instr1_data_hazard = instr1_rf_hazard || instr1_pipe_hazard;
+    assign instr1_data_hazard = instr1_rf_hazard | instr1_pipe_hazard;
+    assign instr2_data_hazard = instr2_rf_hazard | instr2_pipe_hazard;
+
     always_comb begin
         //No data hazard for first instruction: None of the instructions in the next stage or
         //in either pipe writes to rd and isn't completed yet (most recent)
         instr1_data_hazard = 0;
         instr1_pipe_hazard = 0;
-        if ((RegWriteEven_ex && RT_source_instr1 && (RT_addr_even_ex == RT_addr1)) ||
+        instr1_rf_hazard = 0; //default value 
+
+        instr2_data_hazard = 0;
+        instr2_pipe_hazard = 0;
+        instr2_rf_hazard = 0; //default value
+
+        if ((RegWriteEven_ex && RT_source_instr1 && (RT_addr_even_ex == RT_addr1)) ||    // if RT_addr in execute unit == RT_addr in decode unit, and the current instr uses RT as a source, then its a hazard.
             (RegWriteEven_ex && RA_source_instr1 && (RT_addr_even_ex == RA_addr1)) ||
             (RegWriteEven_ex && RB_source_instr1 && (RT_addr_even_ex == RB_addr1)) ||
             (RegWriteEven_ex && RC_source_instr1 && (RT_addr_even_ex == RC_addr1)) ||
@@ -213,11 +236,82 @@ module top_level #(
         begin
                 instr1_rf_hazard = 1;
         end
+
+        
             
         for(int i = 0; i < LAST_STAGE; i++) begin
-            if ((even_pkt_pipes[i].RegWr && RT_source_instr1 && 
+            //----------RT checks------
+            //checks if a destination register in the even pipe is our RT source in the decode stage.
+            //the below two if statements is possible because no two instructions can have the same dest addr at the same stage.
+            //If there is a case when two instructions have the same dest addr, we would need to stall one of them in the decode stage and thereby create a cycle offset for the writeback to occur.
+            //Therefore, only one if block would execute.
+            if (even_pkt_pipes[i].RegWr && RT_source_instr1 && 
                 (even_pkt_pipes[i].dest_addr == RT_addr1)) begin
                     if((even_pkt_pipes[i].curr_stage_counter + 1) < even_pkt_pipes[i].latency) begin
+                        instr1_pipe_hazard = 1;
+                        break;
+                    end
+            end
+            //odd pipe
+            if (odd_pkt_pipes[i].RegWr && RT_source_instr1 && 
+                (odd_pkt_pipes[i].dest_addr == RT_addr1)) begin
+                    if((odd_pkt_pipes[i].curr_stage_counter + 1) < odd_pkt_pipes[i].latency) begin
+                        instr1_pipe_hazard = 1;
+                        break;
+                    end
+            end
+
+
+            //---------RA checks------
+            //checks if a destination register in the pipe is our RA source in the decode stage.
+            if (even_pkt_pipes[i].RegWr && RA_source_instr1 && 
+                (even_pkt_pipes[i].dest_addr == RA_addr1)) begin
+                    if((even_pkt_pipes[i].curr_stage_counter + 1) < even_pkt_pipes[i].latency) begin
+                        instr1_pipe_hazard = 1;
+                        break;
+                    end
+            end
+            //odd pipe
+            if (odd_pkt_pipes[i].RegWr && RA_source_instr1 && 
+                (odd_pkt_pipes[i].dest_addr == RA_addr1)) begin
+                    if((odd_pkt_pipes[i].curr_stage_counter + 1) < odd_pkt_pipes[i].latency) begin
+                        instr1_pipe_hazard = 1;
+                        break;
+                    end
+            end
+
+            //---------RB checks------
+            //checks if a destination register in the pipe is our RB source in the decode stage.
+            if (even_pkt_pipes[i].RegWr && RB_source_instr1 && 
+                (even_pkt_pipes[i].dest_addr == RB_addr1)) begin
+                    if((even_pkt_pipes[i].curr_stage_counter + 1) < even_pkt_pipes[i].latency) begin
+                        instr1_pipe_hazard = 1;
+                        break;
+                    end
+            end
+            //odd pipe
+            if (odd_pkt_pipes[i].RegWr && RB_source_instr1 && 
+                (odd_pkt_pipes[i].dest_addr == RB_addr1)) begin
+                    if((odd_pkt_pipes[i].curr_stage_counter + 1) < odd_pkt_pipes[i].latency) begin
+                        instr1_pipe_hazard = 1;
+                        break;
+                    end
+            end
+
+
+            //---------RC checks------
+            //checks if a destination register in the pipe is our RC source in the decode stage.
+            if (even_pkt_pipes[i].RegWr && RC_source_instr1 && 
+                (even_pkt_pipes[i].dest_addr == RC_addr1)) begin
+                    if((even_pkt_pipes[i].curr_stage_counter + 1) < even_pkt_pipes[i].latency) begin
+                        instr1_pipe_hazard = 1;
+                        break;
+                    end
+            end
+            //odd pipe
+            if (odd_pkt_pipes[i].RegWr && RC_source_instr1 && 
+                (odd_pkt_pipes[i].dest_addr == RC_addr1)) begin
+                    if((odd_pkt_pipes[i].curr_stage_counter + 1) < odd_pkt_pipes[i].latency) begin
                         instr1_pipe_hazard = 1;
                         break;
                     end
@@ -234,6 +328,103 @@ module top_level #(
         //If branch taken signal != branch prediction, flush EVERYTHING that precedes the branch, and set PC's next value to BTA
         //Moreover, if BRANCH target address is multiple of 4, don't attempt to issue first instruction
 
+        if (!instr1_data_hazard) begin   //only when first instr has not data hazard, do we check the second instr.
+            // instr2_data_hazard = 0;
+            // instr2_pipe_hazard = 0;
+            // instr2_rf_hazard = 0; //default value 
+
+            if ((RegWriteEven_ex && RT_source_instr2 && (RT_addr_even_ex == RT_addr2)) ||    // if RT_addr in execute unit == RT_addr in decode unit, and the current instr uses RT as a source, then its a hazard.
+                (RegWriteEven_ex && RA_source_instr2 && (RT_addr_even_ex == RA_addr2)) ||
+                (RegWriteEven_ex && RB_source_instr2 && (RT_addr_even_ex == RB_addr2)) ||
+                (RegWriteEven_ex && RC_source_instr2 && (RT_addr_even_ex == RC_addr2)) ||
+                
+                (RegWriteOdd_ex && RT_source_instr2 && (RT_addr_odd_ex == RT_addr2)) ||
+                (RegWriteOdd_ex && RA_source_instr2 && (RT_addr_odd_ex == RA_addr2)) ||
+                (RegWriteOdd_ex && RB_source_instr2 && (RT_addr_odd_ex == RB_addr2))) 
+            begin
+                    instr2_rf_hazard = 1;
+            end
+                
+            for(int i = 0; i < LAST_STAGE; i++) begin
+                //----------RT checks------
+                //the below two if statements is possible because no two instructions can have the same dest addr at the same stage, i.e. same value of loop variable 'i'.
+                //If there is a case when two instructions have the same dest addr, we would need to stall one of them in the decode stage and thereby create a cycle offset for the writeback to occur.
+                if (even_pkt_pipes[i].RegWr && RT_source_instr2 && 
+                    (even_pkt_pipes[i].dest_addr == RT_addr2)) begin    //checks if a destination register in the even pipe is our RT source in the decode stage.
+                        if((even_pkt_pipes[i].curr_stage_counter + 1) < even_pkt_pipes[i].latency) begin
+                            instr2_pipe_hazard = 1;
+                            break;
+                        end
+                end
+                //odd pipe
+                if (odd_pkt_pipes[i].RegWr && RT_source_instr2 && 
+                    (odd_pkt_pipes[i].dest_addr == RT_addr2)) begin
+                        if((odd_pkt_pipes[i].curr_stage_counter + 1) < odd_pkt_pipes[i].latency) begin
+                            instr2_pipe_hazard = 1;
+                            break;
+                        end
+                end
+
+                //---------RA checks------
+                //checks if a destination register in the pipe is our RA source in the decode stage.
+                if (even_pkt_pipes[i].RegWr && RA_source_instr2 && 
+                    (even_pkt_pipes[i].dest_addr == RA_addr2)) begin
+                        if((even_pkt_pipes[i].curr_stage_counter + 1) < even_pkt_pipes[i].latency) begin
+                            instr2_pipe_hazard = 1;
+                            break;
+                        end
+                end
+                //odd pipe
+                if (odd_pkt_pipes[i].RegWr && RA_source_instr2 && 
+                    (odd_pkt_pipes[i].dest_addr == RA_addr2)) begin
+                        if((odd_pkt_pipes[i].curr_stage_counter + 1) < odd_pkt_pipes[i].latency) begin
+                            instr2_pipe_hazard = 1;
+                            break;
+                        end
+                end
+
+                //---------RB checks------
+                //checks if a destination register in the pipe is our RB source in the decode stage.
+                if (even_pkt_pipes[i].RegWr && RB_source_instr2 && 
+                    (even_pkt_pipes[i].dest_addr == RB_addr2)) begin
+                        if((even_pkt_pipes[i].curr_stage_counter + 1) < even_pkt_pipes[i].latency) begin
+                            instr2_pipe_hazard = 1;
+                            break;
+                        end
+                end
+                //odd pipe
+                if (odd_pkt_pipes[i].RegWr && RB_source_instr2 && 
+                    (odd_pkt_pipes[i].dest_addr == RB_addr2)) begin
+                        if((odd_pkt_pipes[i].curr_stage_counter + 1) < odd_pkt_pipes[i].latency) begin
+                            instr2_pipe_hazard = 1;
+                            break;
+                        end
+                end
+
+
+                //---------RC checks------
+                //checks if a destination register in the pipe is our RC source in the decode stage.
+                if (even_pkt_pipes[i].RegWr && RC_source_instr2 && 
+                    (even_pkt_pipes[i].dest_addr == RC_addr2)) begin
+                        if((even_pkt_pipes[i].curr_stage_counter + 1) < even_pkt_pipes[i].latency) begin
+                            instr2_pipe_hazard = 1;
+                            break;
+                        end
+                end
+                //odd pipe
+                if (odd_pkt_pipes[i].RegWr && RC_source_instr2 && 
+                    (odd_pkt_pipes[i].dest_addr == RC_addr2)) begin
+                        if((odd_pkt_pipes[i].curr_stage_counter + 1) < odd_pkt_pipes[i].latency) begin
+                            instr2_pipe_hazard = 1;
+                            break;
+                        end
+                end
+            end
+        end
+
+
+
+
         // if(first_instr_no_data_hazard && first_instr_not_issued_yet) begin
         //     if(second_instruction_no_data_hazard && second_instruction_different_pipe && second_instruction_different_rd) begin
         //         //dual issue, prepare to increment PC
@@ -249,81 +440,187 @@ module top_level #(
         // end
     end
 
+    assign PC_id = PC; //always pass PC as PC_id (combinational)
+
+    //handle stall logic for instr 1 and instr 2
     always_comb begin
-        if ((Instr_type1 == EVENTYPE) && (Instr_type2 == ODDTYPE)) begin
-            RA_addr_even_id = RA_addr1;
-            RB_addr_even_id = RB_addr1;
-            RC_addr_even_id = RC_addr1;
-            instr_even_id   = instr1;
-            ID_even_id      = ID1;
-            Latency_even_id = Latency1;
-            RT_addr_even_id = RT_addr1;
-            RegWriteEven_id = RegWrite1;
+        instr1_issued = 0;
 
-            PC_id           = PC;
+        //default odd pipe to HW no op
+        RA_addr_odd_id  = 0;
+        RB_addr_odd_id  = 0;
+        instr_odd_id    = 0;
+        ID_odd_id       = 0;
+        Latency_odd_id  = 0;
+        RT_addr_odd_id  = 0;
+        RegWriteOdd_id  = 0;
 
-            RA_addr_odd_id  = RA_addr2;
-            RB_addr_odd_id  = RB_addr2;
-            instr_odd_id    = instr2;
-            ID_odd_id       = ID2;
-            Latency_odd_id  = Latency2;
-            RT_addr_odd_id  = RT_addr2;
-            RegWriteOdd_id  = RegWrite2;
-        end
-        else if ((Instr_type1 == ODDTYPE) && (Instr_type2 == EVENTYPE)) begin
-            RA_addr_even_id = RA_addr2;
-            RB_addr_even_id = RB_addr2;
-            RC_addr_even_id = RC_addr2;
-            instr_even_id   = instr2;
-            ID_even_id      = ID2;
-            Latency_even_id = Latency2;
-            RT_addr_even_id = RT_addr2;
-            RegWriteEven_id = RegWrite2;
+        //default even pipe to HW No op
+        RA_addr_even_id = 0;
+        RB_addr_even_id = 0;
+        RC_addr_even_id = 0;
+        instr_even_id   = 0;
+        ID_even_id      = 0;
+        Latency_even_id = 0;
+        RT_addr_even_id = 0;
+        RegWriteEven_id = 0;
 
-            PC_id           = PC;
-
-            RA_addr_odd_id  = RA_addr1;
-            RB_addr_odd_id  = RB_addr1;
-            instr_odd_id    = instr1;
-            ID_odd_id       = ID1;
-            Latency_odd_id  = Latency1;
-            RT_addr_odd_id  = RT_addr1;
-            RegWriteOdd_id  = RegWrite1;
-        end
-
-        else if (Instr_type1 == EVENTYPE && Instr_type2 == EVENTYPE) begin
-            RA_addr_even_id = RA_addr1;
-            RB_addr_even_id = RB_addr1;
-            RC_addr_even_id = RC_addr1;
-            instr_even_id   = instr1;
-            ID_even_id      = ID1;
-            Latency_even_id = Latency1;
-            RT_addr_even_id = RT_addr1;
-            RegWriteEven_id = RegWrite1;
-        end
-        else if ( no_data_hazard && Instr_type1 == ODDTYPE && Instr_type2 == ODDTYPE) begin
-            RA_addr_odd_id  = RA_addr1;
-            RB_addr_odd_id  = RB_addr1;
-            instr_odd_id    = instr1;
-            ID_odd_id       = ID1;
-            Latency_odd_id  = Latency1;
-            RT_addr_odd_id  = RT_addr1;
-            RegWriteOdd_id  = RegWrite1;
-
-            if(!instr1_issued) instr1_issued = 1'b1;
-            else begin
-                instr1_issued = 1'b1;
-                instr2_issued = 1'b1;
+        //if we're issuing the first instruction, go here
+        //@TODO Note: might need to add a check for flash after (i.e. from branch), but that is okay
+        //@TODO: WE HAVE TO ADD LOGIC TO SUPPORT FLUSHING ONE PIPE BECAUSE OF PC MULTIPLE (i.e. Branch to address divisible by 4)
+        if(!instr1_data_hazard && !instr1_issued_prev) begin 
+            //if instr1 has no data hazard and we didn't issue it on last cycle, issue instruction 1
+            //This signal is only 1 if we issue 1st instruction, but not second instruction
+            instr1_issued = 1;
+            //we need to make sure we issue instruction 1 to the correct pipe
+            if (Instr_type1 == EVENTYPE) begin
+                RA_addr_even_id = RA_addr1;
+                RB_addr_even_id = RB_addr1;
+                RC_addr_even_id = RC_addr1;
+                instr_even_id   = instr1;
+                ID_even_id      = ID1;
+                Latency_even_id = Latency1;
+                RT_addr_even_id = RT_addr1;
+                RegWriteEven_id = RegWrite1;
+            end else begin //Instr_type1 == ODDTYPE
+                RA_addr_odd_id  = RA_addr1;
+                RB_addr_odd_id  = RB_addr1;
+                instr_odd_id    = instr1;
+                ID_odd_id       = ID1;
+                Latency_odd_id  = Latency1;
+                RT_addr_odd_id  = RT_addr1;
+                RegWriteOdd_id  = RegWrite1;
             end
         end
 
-
-        elseif (ID1 == 99 || ) begin
-            
+        //only check if both pipes are the same if instr1 wasn't already issued
+        //(structural hazard)
+        if(!instr1_issued_prev && !instr1_data_hazard) begin
+            //we only issue an instruction if both pipes aren't the same for dual issue (and instr 1 doesn't have an issue)
+            //which means we might dual issue
+            instr1_issued = 1; //default case (if instr_type2 == instr_type1)
+            if(Instr_type2 != Instr_type1) begin
+                instr1_issued = 0; //reset instr1_issued flag because we're issuing both instructions
+                if (Instr_type2 == EVENTYPE) begin
+                    RA_addr_even_id = RA_addr2;
+                    RB_addr_even_id = RB_addr2;
+                    RC_addr_even_id = RC_addr2;
+                    instr_even_id   = instr2;
+                    ID_even_id      = ID2;
+                    Latency_even_id = Latency2;
+                    RT_addr_even_id = RT_addr2;
+                    RegWriteEven_id = RegWrite2;
+                end else begin //Instr_type2 == ODDTYPE
+                    RA_addr_odd_id  = RA_addr2;
+                    RB_addr_odd_id  = RB_addr2;
+                    instr_odd_id    = instr2;
+                    ID_odd_id       = ID2;
+                    Latency_odd_id  = Latency2;
+                    RT_addr_odd_id  = RT_addr2;
+                    RegWriteOdd_id  = RegWrite2;
+                end
+            end
+        end else if(instr1_issued_prev) begin //if instr1_issued_prev is set, see if there is a data hazard
+            instr1_issued = 1;
+            if(!instr2_data_hazard) begin //if no data hazard, we can clear the flag and go to new data on next cycle
+                instr1_issued = 0;
+                if (Instr_type2 == EVENTYPE) begin
+                    RA_addr_even_id = RA_addr2;
+                    RB_addr_even_id = RB_addr2;
+                    RC_addr_even_id = RC_addr2;
+                    instr_even_id   = instr2;
+                    ID_even_id      = ID2;
+                    Latency_even_id = Latency2;
+                    RT_addr_even_id = RT_addr2;
+                    RegWriteEven_id = RegWrite2;
+                end else begin //Instr_type2 == ODDTYPE
+                    RA_addr_odd_id  = RA_addr2;
+                    RB_addr_odd_id  = RB_addr2;
+                    instr_odd_id    = instr2;
+                    ID_odd_id       = ID2;
+                    Latency_odd_id  = Latency2;
+                    RT_addr_odd_id  = RT_addr2;
+                    RegWriteOdd_id  = RegWrite2;
+                end
+            end
         end
-
-        else 
     end
+
+    // always_comb begin
+    //     if ((Instr_type1 == EVENTYPE) && (Instr_type2 == ODDTYPE)) begin
+    //         RA_addr_even_id = RA_addr1;
+    //         RB_addr_even_id = RB_addr1;
+    //         RC_addr_even_id = RC_addr1;
+    //         instr_even_id   = instr1;
+    //         ID_even_id      = ID1;
+    //         Latency_even_id = Latency1;
+    //         RT_addr_even_id = RT_addr1;
+    //         RegWriteEven_id = RegWrite1;
+
+    //         PC_id           = PC;
+
+    //         RA_addr_odd_id  = RA_addr2;
+    //         RB_addr_odd_id  = RB_addr2;
+    //         instr_odd_id    = instr2;
+    //         ID_odd_id       = ID2;
+    //         Latency_odd_id  = Latency2;
+    //         RT_addr_odd_id  = RT_addr2;
+    //         RegWriteOdd_id  = RegWrite2;
+    //     end
+    //     else if ((Instr_type1 == ODDTYPE) && (Instr_type2 == EVENTYPE)) begin
+    //         RA_addr_even_id = RA_addr2;
+    //         RB_addr_even_id = RB_addr2;
+    //         RC_addr_even_id = RC_addr2;
+    //         instr_even_id   = instr2;
+    //         ID_even_id      = ID2;
+    //         Latency_even_id = Latency2;
+    //         RT_addr_even_id = RT_addr2;
+    //         RegWriteEven_id = RegWrite2;
+
+    //         PC_id           = PC;
+
+    //         RA_addr_odd_id  = RA_addr1;
+    //         RB_addr_odd_id  = RB_addr1;
+    //         instr_odd_id    = instr1;
+    //         ID_odd_id       = ID1;
+    //         Latency_odd_id  = Latency1;
+    //         RT_addr_odd_id  = RT_addr1;
+    //         RegWriteOdd_id  = RegWrite1;
+    //     end
+
+    //     else if (Instr_type1 == EVENTYPE && Instr_type2 == EVENTYPE) begin
+    //         RA_addr_even_id = RA_addr1;
+    //         RB_addr_even_id = RB_addr1;
+    //         RC_addr_even_id = RC_addr1;
+    //         instr_even_id   = instr1;
+    //         ID_even_id      = ID1;
+    //         Latency_even_id = Latency1;
+    //         RT_addr_even_id = RT_addr1;
+    //         RegWriteEven_id = RegWrite1;
+    //     end
+    //     else if ( no_data_hazard && Instr_type1 == ODDTYPE && Instr_type2 == ODDTYPE) begin
+    //         RA_addr_odd_id  = RA_addr1;
+    //         RB_addr_odd_id  = RB_addr1;
+    //         instr_odd_id    = instr1;
+    //         ID_odd_id       = ID1;
+    //         Latency_odd_id  = Latency1;
+    //         RT_addr_odd_id  = RT_addr1;
+    //         RegWriteOdd_id  = RegWrite1;
+
+    //         if(!instr1_issued) instr1_issued = 1'b1;
+    //         else begin
+    //             instr1_issued = 1'b1;
+    //             instr2_issued = 1'b1;
+    //         end
+    //     end
+
+
+    //     elseif (ID1 == 99 || ) begin
+            
+    //     end
+
+    //     else 
+    // end
 
     ID_EX_reg u_ID_EX_reg (
         .clk              (clk),
