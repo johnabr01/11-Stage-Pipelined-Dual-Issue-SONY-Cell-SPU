@@ -14,6 +14,7 @@ module execute #(
     input [0:3]  Latency_even,
     input [0:6]  RT_addr_even,
     input RegWriteEven_in,
+    input int instr_order_even,//unsigned int instr_order_even,
 
     input [0:31] PC,
     input [0:6]  RA_addr_odd,
@@ -23,6 +24,7 @@ module execute #(
     input [0:3]  Latency_odd,
     input [0:6]  RT_addr_odd,
     input RegWriteOdd_in,
+    input int instr_order_odd,
     output logic [0:31] BTA,
     output logic BT,
     output odd_packet odd_pkt_pipes [0:LAST_STAGE - 1],
@@ -71,6 +73,7 @@ always_comb begin
     pkt_in_even.Latency      = Latency_even;
     pkt_in_even.instr        = instr_even;
     pkt_in_even.RegWrite     = RegWriteEven_in;
+    pkt_in_even.instr_order  = instr_order_even;
     //pkt_in_even.RT_dest_data = RT_even_dest_data;
 
     // Odd packet
@@ -84,6 +87,8 @@ always_comb begin
     pkt_in_odd.Latency       = Latency_odd;
     pkt_in_odd.instr         = instr_odd;
     pkt_in_odd.RegWrite      = RegWriteOdd_in;
+    pkt_in_odd.instr_order   = instr_order_odd;
+
     //pkt_in_odd.RT_dest_data  = RT_odd_dest_data;
 end
 
@@ -135,7 +140,8 @@ odd_pipe odd_pipe_inst(
     .BTA              (BTA),
     .BT               (BT),
     .canForwardOdd    (canForwardOdd),
-    .odd_pkt_pipes    (odd_pkt_pipes)
+    .odd_pkt_pipes    (odd_pkt_pipes),
+    .branch_flush     (branch_flush)
 );
 
 even_pipe even_pipe_inst(
@@ -143,9 +149,26 @@ even_pipe even_pipe_inst(
     .rst_n             (rst_n),
     .pkt_in            (pkt_in_even),
     .canForwardEven    (canForwardEven),
-    .even_pkt_pipes    (even_pkt_pipes)
+    .even_pkt_pipes    (even_pkt_pipes),
+    .branch_flush      (branch_flush),
+    .branch_flush_all  (branch_flush_all)
 );
 
+always_comb begin
+    branch_flush = 0;
+    branch_flush_all = 0;
+
+    if(BT)begin
+        if (odd_pkt_pipes[1].instr_order == 1) begin
+            branch_flush = 1;
+            branch_flush_all = 1;
+        end
+        else if (odd_pkt_pipes[1].instr_order == 2) begin
+            branch_flush = 1;
+            branch_flush_all = 0;
+        end 
+    end
+end
 
 always_comb begin
     forward_RA_even = RA_even_data;

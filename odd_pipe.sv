@@ -3,6 +3,7 @@ import packet_pkg::*;
 module odd_pipe (
     input clk,
     input rst_n,
+    input branch_flush,
     input [0:31] PC,
     input packet pkt_in, //biggest packet containing all the control signals and data from the decode stage.
     output logic [0:31] BTA,
@@ -18,8 +19,8 @@ logic [0:31] computed_BTA;
 
 logic computed_BT;
 
-logic [0:31] computed_BTA_pipe;
-logic computed_BT_pipe;
+logic [0:31] computed_BTA_pipe[0:1];
+logic computed_BT_pipe[0:1];
 
 odd_packet pipeline_packet;
 
@@ -60,6 +61,10 @@ odd_execute u_odd_execute (
 
 always_ff @(posedge clk) begin
     if(!rst_n) begin
+        computed_BTA_pipe[0] <= 0;
+        computed_BT_pipe[0] <= 0;
+        computed_BTA_pipe[1] <= 0;
+        computed_BT_pipe [1]<= 0;
         for(int i = 0; i < 7; i++) begin
             odd_pkt_pipes[i].unit_ID <= 0;
             odd_pkt_pipes[i].result <= 0;
@@ -67,15 +72,19 @@ always_ff @(posedge clk) begin
             odd_pkt_pipes[i].RegWr <= 0;
             odd_pkt_pipes[i].dest_addr <= 0;
             odd_pkt_pipes[i].curr_stage_counter <= 0;
-            computed_BTA_pipe <= 0;
-            computed_BT_pipe <= 0;
         end
     end
     else begin
-        computed_BT_pipe <= computed_BT;
-        computed_BTA_pipe <= computed_BTA;
-        odd_pkt_pipes[0] <= pipeline_packet;
+        //@TODO change branch timing -> add one pipeline register in betwewen
+        //@TODO Also double check to make sure canForward signal is actually correct
+        computed_BT_pipe[0] <= computed_BT;
+        computed_BTA_pipe[0] <= computed_BTA;
+        computed_BT_pipe[1] <= computed_BT_pipe[0];
+        computed_BTA_pipe[1] <= computed_BTA_pipe[0];
         //odd_pkt_pipes[0].curr_stage_counter <= 0;
+        if(branch_flush) odd_pkt_pipes[0] <= nop_packet;
+        else odd_pkt_pipes[0] <= pipeline_packet;
+        
         for(int i = 1; i < 7; i++) begin
             odd_pkt_pipes[i] <= odd_pkt_pipes[i-1];
             //Logic to increment counter (or not increment it) based on 
@@ -93,7 +102,7 @@ always_comb begin
     end
 end
 
-assign BTA = computed_BTA_pipe;
-assign BT = computed_BT_pipe;
+assign BTA = computed_BTA_pipe[1];
+assign BT = computed_BT_pipe[1];
 
 endmodule

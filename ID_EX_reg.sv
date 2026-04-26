@@ -17,6 +17,7 @@ module ID_EX_reg (
     input  logic        RA_source_even_in,
     input  logic        RB_source_even_in,
     input  logic        RC_source_even_in,
+    input int           instr_order_even_in,
 
     // Odd pipe inputs (from ID stage)
     input  logic [0:31] PC_in,
@@ -30,6 +31,7 @@ module ID_EX_reg (
     input  logic        RT_source_odd_in,
     input  logic        RA_source_odd_in,
     input  logic        RB_source_odd_in,
+    input int           instr_order_odd_in,
 
     // Even pipe outputs (to EX stage)
     output logic [0:6]  RA_addr_even_out,
@@ -40,6 +42,7 @@ module ID_EX_reg (
     output logic [0:3]  Latency_even_out,
     output logic [0:6]  RT_addr_even_out,
     output logic        RegWriteEven_out,
+    output int          instr_order_even_out,
     // output logic        RT_source_even_out,
     // output logic        RA_source_even_out,
     // output logic        RB_source_even_out,
@@ -54,6 +57,7 @@ module ID_EX_reg (
     output logic [0:3]  Latency_odd_out,
     output logic [0:6]  RT_addr_odd_out,
     output logic        RegWriteOdd_out,
+    output int          instr_order_odd_out
     // output logic        RT_source_odd_out,
     // output logic        RA_source_odd_out,
     // output logic        RB_source_odd_out
@@ -71,6 +75,8 @@ module ID_EX_reg (
             RT_addr_even_out   <= 7'b0;
             RegWriteEven_out   <= 1'b0;
 
+            instr_order_even_out <= 1'b0;
+
             // RT_source_even_out  <= 1'b0;
             // RA_source_even_out  <= 1'b0;
             // RB_source_even_out  <= 1'b0;
@@ -85,6 +91,7 @@ module ID_EX_reg (
             Latency_odd_out    <= 4'b0;
             RT_addr_odd_out    <= 7'b0;
             RegWriteOdd_out    <= 1'b0;
+            instr_order_odd_out <= 1'b0;
 
             // RT_source_odd_out  <= 1'b0;
             // RA_source_odd_out  <= 1'b0;
@@ -100,6 +107,7 @@ module ID_EX_reg (
             Latency_even_out   <= Latency_even_in;
             RT_addr_even_out   <= RT_addr_even_in;
             RegWriteEven_out   <= RegWriteEven_in;
+            instr_order_even_out <= instr_order_even_in;
 
             // RT_source_even_out  <= RT_source_even_in;
             // RA_source_even_out  <= RA_source_even_in;
@@ -115,6 +123,8 @@ module ID_EX_reg (
             Latency_odd_out    <= Latency_odd_in;
             RT_addr_odd_out    <= RT_addr_odd_in;
             RegWriteOdd_out    <= RegWriteOdd_in;
+
+            instr_order_odd_out <= instr_order_odd_in;
 
             // RT_source_odd_out  <= RT_source_odd_in;
             // RA_source_odd_out  <= RA_source_odd_in;

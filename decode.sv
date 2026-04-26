@@ -16,7 +16,7 @@ module decode_stage #(
     output logic [0:6]  ID,
     output logic [0:3]  Latency,
     output logic        RegWrite,
-    ouptut logic        Instr_type,
+    output logic        Instr_type,
 
     output logic        RT_source,
     output logic        RA_source,

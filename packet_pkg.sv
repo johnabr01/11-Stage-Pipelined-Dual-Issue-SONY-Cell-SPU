@@ -10,6 +10,7 @@ package packet_pkg;
         logic RegWrite;
         logic [0:31] instr;
         logic [0:6] RT_dest_addr;
+        int instr_order; //1 first packet, 2 second packet
         //logic [0:127] RT_dest_data;
     } packet;
 
@@ -20,6 +21,7 @@ package packet_pkg;
         logic RegWr;
         logic [0:6] dest_addr;
         logic [0:3] curr_stage_counter;
+        int instr_order; //1 first packet, 2 second packet
     } even_packet;
 
     typedef struct packed {
@@ -29,6 +31,7 @@ package packet_pkg;
         logic RegWr;
         logic [0:6] dest_addr;
         logic [0:3] curr_stage_counter;
+        unsigned int instr_order; //1 first packet, 2 second
     } odd_packet;
 
 endpackage
