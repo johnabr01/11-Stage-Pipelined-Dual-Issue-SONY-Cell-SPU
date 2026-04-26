@@ -27,7 +27,7 @@ module top_level #(
     logic [0:3]  Latency_even_id;
     logic [0:6]  RT_addr_even_id;
     logic        RegWriteEven_id;
-    int          instr_order_even_id;
+    logic [0:1]  instr_order_even_id;
 
     logic [0:31] PC_id;
     logic [0:6]  RA_addr_odd_id, RB_addr_odd_id;
@@ -36,7 +36,7 @@ module top_level #(
     logic [0:3]  Latency_odd_id;
     logic [0:6]  RT_addr_odd_id;
     logic        RegWriteOdd_id;
-    int          instr_order_odd_id;
+    logic [0:1]  instr_order_odd_id;
 
     logic        RT_source_instr1;
     logic        RA_source_instr1;
@@ -47,6 +47,8 @@ module top_level #(
     logic [0:6]  RB_addr1;
     logic [0:6]  RC_addr1;
     logic instr1_data_hazard;
+    logic instr1_rf_hazard;
+    logic instr1_pipe_hazard;
 
     logic        RT_source_instr2;
     logic        RA_source_instr2;
@@ -91,14 +93,11 @@ module top_level #(
     logic RT_source_odd_ex;
     logic RA_source_odd_ex;
     logic RB_source_odd_ex;
-
-    logic instr1_data_hazard;
-    logic instr1_rf_hazard;
-    logicc instr1_pipe_hazard;
+    
 
     logic instr2_data_hazard;
     logic instr2_rf_hazard;
-    logicc instr2_pipe_hazard;
+    logic instr2_pipe_hazard;
     logic instr2_decode_hazard;
 
     logic structural_hazard;
@@ -162,8 +161,8 @@ module top_level #(
         .instr2_out(instr2),
         .pc_out(PC),
         // .stall_out(stall_prev), //output is the new input to our hazard/decode logic stage
-        .instr1_issued_out(instr1_issued_prev)
-        .flush(flush), //MAKE SURE TO CHANGE AFTER IMPLEMENTING DECODE LOGIC
+        .instr1_issued_out(instr1_issued_prev),
+        .flush(flush) //MAKE SURE TO CHANGE AFTER IMPLEMENTING DECODE LOGIC
         // .stall(1'b0) //MAKE SURE TO CHANGE AFTER IMPLEMENTING DECODE LOGIC
     );
 
@@ -228,8 +227,6 @@ module top_level #(
             //If branch taken signal != branch prediction, flush EVERYTHING that precedes the branch, and set PC's next value to BTA
             //Moreover, if BRANCH target address is multiple of 4, don't attempt to issue first instruction
             //Branch flush has priority over single issue because we need to wipe those instructions anyways
-    assign instr1_data_hazard = instr1_rf_hazard | instr1_pipe_hazard;
-    assign instr2_data_hazard = instr2_decode_hazard | instr2_rf_hazard | instr2_pipe_hazard;
 
     always_comb begin
         //No data hazard for first instruction: None of the instructions in the next stage or
@@ -243,6 +240,11 @@ module top_level #(
         instr2_rf_hazard = 0; //default value
         instr2_decode_hazard = 0;
 
+
+        instr1_data_hazard = instr1_rf_hazard | instr1_pipe_hazard;
+        instr2_data_hazard = instr2_decode_hazard | instr2_rf_hazard | instr2_pipe_hazard;
+
+
         if ((RegWriteEven_ex && RT_source_instr1 && (RT_addr_even_ex == RT_addr1)) ||    // if RT_addr in execute unit == RT_addr in decode unit, and the current instr uses RT as a source, then its a hazard.
             (RegWriteEven_ex && RA_source_instr1 && (RT_addr_even_ex == RA_addr1)) ||
             (RegWriteEven_ex && RB_source_instr1 && (RT_addr_even_ex == RB_addr1)) ||
@@ -255,7 +257,7 @@ module top_level #(
                 instr1_rf_hazard = 1;
         end
 
-        if ((RT_addr1 == RT_addr2) && !instr1_issued_prev && RegWrite1 && Regwrite2) structural_hazard = 1; //if both instructions have the same destination register, we can't dual issue because of structural hazard. We can only issue one instruction, and then the other instruction on the next cycle (assuming no data hazard).
+        if ((RT_addr1 == RT_addr2) && !instr1_issued_prev && RegWrite1 && RegWrite2) structural_hazard = 1; //if both instructions have the same destination register, we can't dual issue because of structural hazard. We can only issue one instruction, and then the other instruction on the next cycle (assuming no data hazard).
         else structural_hazard = 0;
 
         if ((RegWrite1 && RT_source_instr2 && (RT_addr1 == RT_addr2)) ||    // if RT_addr in execute unit == RT_addr in decode unit, and the current instr uses RT as a source, then its a hazard.
@@ -579,12 +581,7 @@ module top_level #(
             end
         end 
     end
-    
-    always_comb begin
-        if (BT && stall) begin
-            if ()
-        end
-    end
+
 
     // always_comb begin
     //     if ((Instr_type1 == EVENTYPE) && (Instr_type2 == ODDTYPE)) begin
@@ -679,10 +676,10 @@ module top_level #(
         .RegWriteEven_in  (RegWriteEven_id),
         .instr_order_even_in (instr_order_even_id), 
 
-        .RT_source_even_id (RT_source_even_id),
-        .RA_source_even_id (RA_source_even_id),
-        .RB_source_even_id (RB_source_even_id),
-        .RC_source_even_id (RC_source_even_id),
+        .RT_source_even_in (RT_source_even_id),
+        .RA_source_even_in (RA_source_even_id),
+        .RB_source_even_in (RB_source_even_id),
+        .RC_source_even_in (RC_source_even_id),
 
 
         // Odd pipe inputs
@@ -696,9 +693,9 @@ module top_level #(
         .RegWriteOdd_in   (RegWriteOdd_id),
         .instr_order_odd_in (instr_order_odd_id),
 
-        .RT_source_odd_id (RT_source_odd_id),
-        .RA_source_odd_id (RA_source_odd_id),
-        .RB_source_odd_id (RB_source_odd_id),
+        .RT_source_odd_in (RT_source_odd_id),
+        .RA_source_odd_in (RA_source_odd_id),
+        .RB_source_odd_in (RB_source_odd_id),
 
         // Even pipe outputs
         .RA_addr_even_out (RA_addr_even_ex),

@@ -14,7 +14,7 @@ module execute #(
     input [0:3]  Latency_even,
     input [0:6]  RT_addr_even,
     input RegWriteEven_in,
-    input int instr_order_even,//unsigned int instr_order_even,
+    input [0:1] instr_order_even,//unsigned int instr_order_even,
 
     input [0:31] PC,
     input [0:6]  RA_addr_odd,
@@ -24,7 +24,7 @@ module execute #(
     input [0:3]  Latency_odd,
     input [0:6]  RT_addr_odd,
     input RegWriteOdd_in,
-    input int instr_order_odd,
+    input [0:1] instr_order_odd,
     output logic [0:31] BTA,
     output logic BT,
     output odd_packet odd_pkt_pipes [0:LAST_STAGE - 1],
@@ -61,6 +61,10 @@ logic [0:127] forward_RA_odd;
 logic [0:127] forward_RB_odd;  
 logic [0:127] forward_RT_odd;
 // --- Pack input structs ---
+
+logic branch_flush;
+logic branch_flush_all;
+
 always_comb begin
     // Even packet
     pkt_in_even.RA           = forward_RA_even;

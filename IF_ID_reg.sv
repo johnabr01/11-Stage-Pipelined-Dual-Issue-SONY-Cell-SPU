@@ -5,17 +5,18 @@ module IF_ID_reg(
     input [0:31] instr1_in,
     input [0:31] instr2_in,
     input single_issue_stall_in,
-    input instr1_issued,
+    input instr1_issued_in,
+    input flush,
 
     output logic [0:31] instr1_out,
-    output logic [0:31] instr2_out
+    output logic [0:31] instr2_out,
     output logic [0:31] pc_out,
     output logic single_issue_stall_out,
     output logic instr1_issued_out
 );
 
     always_ff @(posedge clk) begin
-        if(rst_n == 1'b0) begin 
+        if(rst_n == 1'b0 || flush) begin 
             instr1_out <= 0;
             instr2_out <= 0;
             pc_out <= 0;

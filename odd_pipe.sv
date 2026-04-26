@@ -23,6 +23,7 @@ logic [0:31] computed_BTA_pipe[0:1];
 logic computed_BT_pipe[0:1];
 
 odd_packet pipeline_packet;
+odd_packet nop_packet;
 
 always_comb begin
     pipeline_packet.unit_ID            = pkt_in.ID;
@@ -31,6 +32,15 @@ always_comb begin
     pipeline_packet.RegWr              = pkt_in.RegWrite;
     pipeline_packet.dest_addr          = pkt_in.RT_dest_addr;
     pipeline_packet.curr_stage_counter = 0;
+end
+
+always_comb begin
+    nop_packet.unit_ID            = 0;
+    nop_packet.result             = 0;
+    nop_packet.latency            = 0;
+    nop_packet.RegWr              = 0;
+    nop_packet.dest_addr          = 0;
+    nop_packet.curr_stage_counter = 0;
 end
 
 odd_execute u_odd_execute (

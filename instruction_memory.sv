@@ -1,7 +1,7 @@
 module instruction_memory(
     input [0:31] address, //word
     output logic [0:31] instr1,
-    ouptut logic [0:31] instr2
+    output logic [0:31] instr2
 );
     
     logic [0:31] ram[0:511]; //2 kB instruction memory

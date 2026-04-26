@@ -80,7 +80,7 @@ always_ff @(posedge clk) begin
             even_pkt_pipes[1] <= nop_packet;
         end else begin
             even_pkt_pipes[1] <= even_pkt_pipes[0];
-            if(even_pkt_pipes[1].curr_stage_counter < even_pkt_pipes[0].latency) even_pkt_pipes[i].curr_stage_counter <= even_pkt_pipes[0].curr_stage_counter + 1;
+            if(even_pkt_pipes[1].curr_stage_counter < even_pkt_pipes[0].latency) even_pkt_pipes[1].curr_stage_counter <= even_pkt_pipes[0].curr_stage_counter + 1;
             else even_pkt_pipes[1].curr_stage_counter <= even_pkt_pipes[0].curr_stage_counter;
         end
         for(int i = 2; i < 7; i++) begin
