@@ -110,13 +110,14 @@ instruction_table = {
     "brhnz":{"type": "RI16", "opcode": 0b001000110},
     "brhz": {"type": "RI16", "opcode": 0b001000100},
 
+    # ---------------- RI18 ----------------
+    "ila": {"type": "RI18", "opcode": 0b0100001},
+
     # ---------------- SPECIAL ----------------
     "nop":  {"type": "SPECIAL", "opcode": 0b01000000001},
     "lnop": {"type": "SPECIAL", "opcode": 0b00000000001},
     "stop": {"type": "SPECIAL", "opcode": 0b00000000000}
-
-
-    #IMPLEMENT RI18 instruction, i.e. ila
+    
 }
 
 def check_width(value, bits, name):
@@ -175,6 +176,7 @@ def build_special(op):
     check_width(op, 11, "opcode")
 
     return (op << 21)
+
 
 def first_pass(lines):
     labels = {}           # label_name -> instruction address
@@ -292,6 +294,15 @@ def encode_instruction(mnemonic, operands, labels, current_addr):
             rt = parse_register(operands[0])
             i16 = int(operands[1], 0) & 0xFFFF
             return build_ri16(instr_op, i16, rt)
+
+    elif instr_type == "RI18":
+        rt = parse_register(operands[0])
+        if operands[1] in labels:
+            value = labels[operands[1]]
+        else:
+            raise Exception(f"Label {operands[1]} does not exist")
+        i18 = value & 0x3FFFF
+        return build_ri18(instr_op, i18, rt)
 
     elif instr_type == "SPECIAL":
         return build_special(instr_op)
