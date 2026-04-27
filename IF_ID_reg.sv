@@ -17,8 +17,8 @@ module IF_ID_reg(
 
     always_ff @(posedge clk) begin
         if(rst_n == 1'b0 || flush) begin 
-            instr1_out <= 0;
-            instr2_out <= 0;
+            instr1_out <= 32'h40200000;
+            instr2_out <= 32'h00200000;
             pc_out <= 0;
             single_issue_stall_out <= 0;
             instr1_issued_out <= 0;

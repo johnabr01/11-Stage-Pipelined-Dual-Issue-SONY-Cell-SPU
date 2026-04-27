@@ -1,2 +1,4 @@
+AHI r2, r0, 1 		
+AI r3, r0, 2 		
 nop
 lnop

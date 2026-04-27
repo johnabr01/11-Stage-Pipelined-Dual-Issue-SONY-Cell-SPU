@@ -1,6 +1,6 @@
 module decode_stage #(
-    localparam ODDTYPE = 0,
-    localparam EVENTYPE = 1,
+    localparam ODDTYPE = 1,
+    localparam EVENTYPE = 0,
     localparam STOP = 2
 )(
     input  logic        clk,

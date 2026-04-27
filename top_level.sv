@@ -17,8 +17,8 @@ module top_level #(
     logic instr1_issued;
     logic instr1_issued_prev;
 
-    logic instr2_issued;
-    logic instr2_issued_prev;
+    // logic instr2_issued;
+    // logic instr2_issued_prev;
 
     // ID stage outputs / ID_EX inputs
     logic [0:6]  RA_addr_even_id, RB_addr_even_id, RC_addr_even_id;
@@ -74,26 +74,7 @@ module top_level #(
     logic [0:3]  Latency_odd_ex;
     logic [0:6]  RT_addr_odd_ex;
     logic        RegWriteOdd_ex;
-
-    //Data hazard ID / EX signals
-    logic RT_source_even_id;
-    logic RA_source_even_id;
-    logic RB_source_even_id;
-    logic RC_source_even_id;
-
-    logic RT_source_odd_id;
-    logic RA_source_odd_id;
-    logic RB_source_odd_id;
-
-    logic RT_source_even_ex;
-    logic RA_source_even_ex;
-    logic RB_source_even_ex;
-    logic RC_source_even_ex;
-
-    logic RT_source_odd_ex;
-    logic RA_source_odd_ex;
-    logic RB_source_odd_ex;
-    
+   
 
     logic instr2_data_hazard;
     logic instr2_rf_hazard;
@@ -120,6 +101,9 @@ module top_level #(
     logic [0:31] PC;
 
     logic [0:31] pc_next;
+
+    logic [0:6] ID1, ID2;
+    logic [0:3] Latency1, Latency2;
 
     even_packet even_pkt_pipes [0:LAST_STAGE - 1];
     odd_packet odd_pkt_pipes [0:LAST_STAGE - 1];
@@ -676,11 +660,6 @@ module top_level #(
         .RegWriteEven_in  (RegWriteEven_id),
         .instr_order_even_in (instr_order_even_id), 
 
-        .RT_source_even_in (RT_source_even_id),
-        .RA_source_even_in (RA_source_even_id),
-        .RB_source_even_in (RB_source_even_id),
-        .RC_source_even_in (RC_source_even_id),
-
 
         // Odd pipe inputs
         .PC_in            (PC_id),
@@ -692,10 +671,6 @@ module top_level #(
         .RT_addr_odd_in   (RT_addr_odd_id),
         .RegWriteOdd_in   (RegWriteOdd_id),
         .instr_order_odd_in (instr_order_odd_id),
-
-        .RT_source_odd_in (RT_source_odd_id),
-        .RA_source_odd_in (RA_source_odd_id),
-        .RB_source_odd_in (RB_source_odd_id),
 
         // Even pipe outputs
         .RA_addr_even_out (RA_addr_even_ex),
