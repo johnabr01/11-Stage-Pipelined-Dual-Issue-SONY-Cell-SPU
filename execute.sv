@@ -1,7 +1,7 @@
 import packet_pkg::*;
 
 module execute #(
-    localparam LAST_STAGE = 7
+    localparam LAST_STAGE = 8
 )(
     input clk,
     input rst_n,
@@ -64,6 +64,7 @@ logic [0:127] forward_RT_odd;
 
 logic branch_flush;
 logic branch_flush_all;
+logic [0:31] BTA_raw;
 
 always_comb begin
     // Even packet
@@ -141,7 +142,7 @@ odd_pipe odd_pipe_inst(
     .rst_n            (rst_n),
     .PC               (PC),
     .pkt_in           (pkt_in_odd),
-    .BTA              (BTA),
+    .BTA              (BTA_raw),
     .BT               (BT),
     .canForwardOdd    (canForwardOdd),
     .odd_pkt_pipes    (odd_pkt_pipes),
@@ -161,15 +162,18 @@ even_pipe even_pipe_inst(
 always_comb begin
     branch_flush = 0;
     branch_flush_all = 0;
+    BTA = 0;
 
     if(BT)begin
         if (odd_pkt_pipes[1].instr_order == 1) begin
             branch_flush = 1;
             branch_flush_all = 1;
+            BTA = BTA_raw;
         end
         else if (odd_pkt_pipes[1].instr_order == 2) begin
             branch_flush = 1;
             branch_flush_all = 0;
+            BTA = BTA_raw + 4;
         end 
     end
 end

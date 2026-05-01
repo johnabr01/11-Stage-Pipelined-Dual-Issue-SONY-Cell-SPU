@@ -230,6 +230,7 @@ def compute_branch_offset(target_addr, base_addr, bits):
     if not (min_val <= offset <= max_val): # for safety
         raise ValueError(f"Branch offset out of range: {offset}")
 
+    print(f"Offset = {offset & (1 << bits) - 1}")
     return offset & ((1 << bits) - 1)
 
 def encode_instruction(mnemonic, operands, labels, current_addr):

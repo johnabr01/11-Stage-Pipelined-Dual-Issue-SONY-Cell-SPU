@@ -1,4 +1,5 @@
 package packet_pkg;
+
     typedef struct packed {
         logic [0:127] RA; 
         logic [0:127] RB;
