@@ -46,7 +46,7 @@ assign imm_18bit = instr_odd[7:24];
 
 local_store local_store_inst(
     .clk(clk),
-    .address(LSA[0:10]),
+    .address(LSA[0:27]),
     .write_data(RT_odd),
     .MemWrite(MemWrite),
     .read_data(r_mem)
@@ -186,7 +186,7 @@ always_comb begin
         end
 
         83: begin //Store Quadword (a-form)
-            LSA = ({{14{imm_16bit[0]}}, imm_16bit, 4'b00}) & 32'hFFFFFFF0; 
+            LSA = ({{14{imm_16bit[0]}}, imm_16bit, 2'b00}) & 32'hFFFFFFF0; 
             MemWrite = 1;
         end
 

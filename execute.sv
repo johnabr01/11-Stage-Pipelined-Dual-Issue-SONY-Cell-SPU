@@ -165,15 +165,28 @@ always_comb begin
     BTA = 0;
 
     if(BT)begin
-        if (odd_pkt_pipes[1].instr_order == 1) begin
+        //if (odd_pkt_pipes[1].instr_order == 1 && odd_pkt_pipes [1].ID == 93 ) begin
             branch_flush = 1;
             branch_flush_all = 1;
             BTA = BTA_raw;
-        end
-        else if (odd_pkt_pipes[1].instr_order == 2) begin
-            branch_flush = 1;
-            branch_flush_all = 0;
-            BTA = BTA_raw + 4;
+        //end
+        if (odd_pkt_pipes[1].instr_order == 2 ) begin
+            if( odd_pkt_pipes[1].unit_ID == 85
+                || odd_pkt_pipes[1].unit_ID == 87
+                || odd_pkt_pipes[1].unit_ID == 88
+                || odd_pkt_pipes[1].unit_ID == 93 
+                || odd_pkt_pipes[1].unit_ID == 94 
+                || odd_pkt_pipes[1].unit_ID == 95 
+                || odd_pkt_pipes[1].unit_ID == 96) begin
+                branch_flush = 1;
+                branch_flush_all = 0;
+                BTA = BTA_raw;
+            end
+            else begin
+                branch_flush = 1;
+                branch_flush_all = 0;
+                BTA = BTA_raw + 4;
+            end
         end 
     end
 end

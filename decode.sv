@@ -435,7 +435,7 @@ module decode_stage #(
                 Latency = 4'h7; Instr_type = ODDTYPE;  
             end
             11'b001000001??: begin 
-                RA_source = 0; RB_source = 0;
+                RA_source = 0; RB_source = 0; RT_source = 1;
                 RegWrite = 0; 
                 RT = instr[25:31]; ID = ID_STQA; 
                 Latency = 4'h7; Instr_type = ODDTYPE;  

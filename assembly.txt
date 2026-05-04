@@ -1,13 +1,10 @@
+AHI r1, r0, 1  
 AHI r2, r0, 1  
-lnop
-AI r3, r0, 2		
-AH r12, r2, r3
-BR jump_symbol
-stop
-CG r14, r10, r11 
-SFX r15, r10, r2 
+AI r3, r0, 24		
+bra jump_symbol
+AHI r5, r0, 1 
+A r6, r2, r3
+A r7, r4, r3
 jump_symbol:
-A r13, r2, r3
-BG r16, r10, r11
-lnop
-nop
+AHI r8, r0, 1
+stop

@@ -1,0 +1,203 @@
+lqa r0, 0 
+lqa r1, 4 
+lqa r2, 8
+lqa r3, 12
+
+lqa r4, 16
+lqa r5, 20
+lqa r6, 24
+lqa r7, 28
+
+rotqbyi r10, r0, 4 
+rotqbyi r11, r0, 8
+rotqbyi r12, r0, 12
+rotqbyi r13, r0, 16
+
+shlqbyi r14, r10, 12 
+shlqbyi r15, r11, 12
+shlqbyi r16, r12, 12
+shlqbyi r17, r13, 12
+
+rotqbyi r18, r14, 4 
+rotqbyi r19, r15, 4
+rotqbyi r20, r16, 4
+rotqbyi r21, r17, 4
+
+rotqbyi r22, r18, 4 
+rotqbyi r23, r19, 4
+rotqbyi r24, r20, 4
+rotqbyi r25, r21, 4
+
+rotqbyi r26, r22, 4 
+rotqbyi r27, r23, 4
+rotqbyi r28, r24, 4
+rotqbyi r29, r25, 4
+
+or r30, r14, r18 
+or r31, r15, r19
+or r32, r16, r20
+or r33, r17, r21
+
+or r34, r30, r22 
+or r35, r31, r23
+or r36, r32, r24
+or r37, r33, r25
+
+or r38, r34, r26 
+or r39, r35, r27 
+or r40, r36, r28 
+or r41, r37, r29 
+
+fm r42, r38, r4
+
+
+rotqbyi r10, r1, 4 
+rotqbyi r11, r1, 8
+rotqbyi r12, r1, 12
+rotqbyi r13, r1, 16
+shlqbyi r14, r10, 12 
+shlqbyi r15, r11, 12
+
+fma r43, r39, r5, r42
+
+shlqbyi r16, r12, 12
+shlqbyi r17, r13, 12
+rotqbyi r18, r14, 4 
+rotqbyi r19, r15, 4
+rotqbyi r20, r16, 4
+rotqbyi r21, r17, 4
+
+fma r44, r40, r6, r43
+
+rotqbyi r22, r18, 4 
+rotqbyi r23, r19, 4
+rotqbyi r24, r20, 4
+rotqbyi r25, r21, 4
+rotqbyi r26, r22, 4 
+rotqbyi r27, r23, 4
+rotqbyi r28, r24, 4
+
+fma r45, r41, r7, r44
+stqa r45, 40
+
+rotqbyi r29, r25, 4
+
+or r30, r14, r18 
+or r31, r15, r19
+or r32, r16, r20
+or r33, r17, r21
+
+or r34, r30, r22 
+or r35, r31, r23
+or r36, r32, r24
+or r37, r33, r25
+
+or r38, r34, r26 
+or r39, r35, r27 
+or r40, r36, r28 
+or r41, r37, r29 
+
+fm r42, r38, r4
+
+rotqbyi r10, r2, 4 
+rotqbyi r11, r2, 8
+rotqbyi r12, r2, 12
+rotqbyi r13, r2, 16
+shlqbyi r14, r10, 12 
+shlqbyi r15, r11, 12
+shlqbyi r16, r12, 12
+
+fma r43, r39, r5, r42
+
+shlqbyi r17, r13, 12
+
+rotqbyi r18, r14, 4 
+rotqbyi r19, r15, 4
+rotqbyi r20, r16, 4
+rotqbyi r21, r17, 4
+rotqbyi r22, r18, 4 
+rotqbyi r23, r19, 4
+
+fma r44, r40, r6, r43
+
+rotqbyi r24, r20, 4
+rotqbyi r25, r21, 4
+rotqbyi r26, r22, 4 
+rotqbyi r27, r23, 4
+rotqbyi r28, r24, 4
+rotqbyi r29, r25, 4
+
+or r30, r14, r18 
+
+fma r45, r41, r7, r44
+stqa r45, 44
+
+or r31, r15, r19
+or r32, r16, r20
+or r33, r17, r21
+
+or r34, r30, r22 
+or r35, r31, r23
+or r36, r32, r24
+or r37, r33, r25
+
+or r38, r34, r26 
+or r39, r35, r27 
+or r40, r36, r28 
+or r41, r37, r29 
+
+fm r42, r38, r4
+
+rotqbyi r10, r3, 4 
+rotqbyi r11, r3, 8
+rotqbyi r12, r3, 12
+rotqbyi r13, r3, 16
+shlqbyi r14, r10, 12 
+shlqbyi r15, r11, 12
+
+fma r43, r39, r5, r42
+
+shlqbyi r16, r12, 12
+shlqbyi r17, r13, 12
+rotqbyi r18, r14, 4 
+rotqbyi r19, r15, 4
+rotqbyi r20, r16, 4
+rotqbyi r21, r17, 4
+
+fma r44, r40, r6, r43
+
+rotqbyi r22, r18, 4 
+rotqbyi r23, r19, 4
+rotqbyi r24, r20, 4
+rotqbyi r25, r21, 4
+rotqbyi r26, r22, 4 
+rotqbyi r27, r23, 4
+
+fma r45, r41, r7, r44
+stqa r45, 48
+
+rotqbyi r28, r24, 4
+rotqbyi r29, r25, 4
+or r30, r14, r18 
+or r31, r15, r19
+or r32, r16, r20
+or r33, r17, r21
+
+or r34, r30, r22 
+or r35, r31, r23
+or r36, r32, r24
+or r37, r33, r25
+
+or r38, r34, r26 
+or r39, r35, r27 
+or r40, r36, r28 
+or r41, r37, r29 
+
+fm r42, r38, r4
+fma r43, r39, r5, r42
+fma r44, r40, r6, r43
+fma r45, r41, r7, r44
+
+stqa r45, 52
+
+stop
