@@ -133,7 +133,7 @@ The assembler currently defines 99 mnemonics across the supported instruction fo
 ## Architecture Overview
 
 The diagram below summarizes the core pipeline shape: dual-instruction fetch feeds dual decode, hazard checking, issue routing, register fetch/forwarding, and then multiple even/odd execution lanes before even and odd writeback.
-![Block Diagram](block_diagram.png "System Block Diagram")
+![Block Diagram](BlockDiagram.png "System Block Diagram")
 
 ```text
 assembly.txt
