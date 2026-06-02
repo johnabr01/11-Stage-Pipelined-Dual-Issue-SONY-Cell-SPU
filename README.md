@@ -147,6 +147,9 @@ The assembler currently defines 99 mnemonics across the supported instruction fo
 
 ## Architecture Overview
 
+The diagram below summarizes the core pipeline shape: dual-instruction fetch feeds dual decode, hazard checking, issue routing, register fetch/forwarding, and then multiple even/odd execution lanes before even and odd writeback.
+![Block Diagram](images/block_diagram.png "System Block Diagram")
+
 ```text
 assembly.txt
     |
@@ -167,7 +170,7 @@ assembler.py  --->  instructions.txt
           +--------------+--------------+
                          |
                          v
-                  ID/EX pipeline register
+                  ID/RF pipeline register
                          |
                          v
        +-----------------+-----------------+
@@ -183,6 +186,53 @@ assembler.py  --->  instructions.txt
                          v
                  128 x 128-bit register file
 ```
+
+---
+
+## Detailed Design Breakdown
+
+### Program Counter and Instruction Memory
+
+- The program counter normally increments by **8 bytes** so the front end can fetch a pair of 32-bit instructions each cycle.
+- When a branch is taken, the program counter is redirected to the computed branch target address instead of the sequential `PC + 8` value.
+- Stall and stop conditions feed the `pc_write` control so the front end only advances when the pipeline can safely accept new work.
+- Instruction memory is modeled as a **2 kB asynchronous-read memory** initialized at simulation start from `instructions.txt` with `$readmemh`.
+- The memory interface always presents two adjacent instructions to the pipeline, which lets the issue logic decide whether to dual-issue, single-issue, or inject hardware no-ops.
+
+### IF/ID Register and Dual Decode
+
+- The IF/ID register preserves the current instruction pair across stalls and can be flushed when control flow redirects.
+- Because the processor fetches two instructions at a time, it instantiates two decode units and decodes both instructions in parallel.
+- Each decode unit extracts `RT`, `RA`, `RB`, and `RC`, assigns an internal instruction ID, reports expected latency, classifies the instruction as even-pipe or odd-pipe, and marks which register fields are true sources for dependency checks.
+
+### Hazard Detection, Stall, and Flush Logic
+
+The hazard unit handles the core complications of dual issue: two instructions can conflict with each other, with older instructions in the register-fetch stage, or with older instructions still moving through the even and odd pipelines.
+
+- **RAW / data hazards:** instruction 1 or instruction 2 may need a source register that is still being produced by an older instruction. The design checks hazards in register fetch and across both in-flight execution pipes. Instruction 2 also has a decode-stage dependency case when it reads the destination of instruction 1.
+- **WAW / structural hazards:** when both decoded instructions target the same destination register, the design stalls instruction 2 and issues instruction 1 first so writeback order remains unambiguous.
+- **Same-pipe conflicts:** if both decoded instructions would route to the same pipe in the same cycle, the issue logic falls back to single issue instead of over-subscribing the pipe.
+- **Control hazards:** the design predicts branches as not taken. When a branch is actually taken, the pipeline asserts flush controls and redirects the program counter to the branch target.
+- **Forwardability checks:** the execute subsystem tracks when results in the even or odd pipe are mature enough to forward. If the newest dependency cannot be forwarded or read from the register file on the next cycle, the hazard logic stalls instead of issuing unsafe work.
+
+### ID/RF Register and Packetized Execution
+
+The module named `ID_EX_reg.sv` acts as the ID/RF pipeline boundary in this implementation. It captures decoded instruction metadata, including instruction bits, IDs, latencies, destination registers, register-write controls, and issue order. The execute module then packages those fields together with register operands into pipeline packets that move through the even and odd execution pipes.
+
+### Execution, Forwarding, and Writeback
+
+- The execute module owns the register-file instance, the odd-pipe instance, the even-pipe instance, and the combinational forwarding network.
+- Each pipe models **8 pipeline registers including RF/EX1**, which represent the back end of the 11-stage organization after fetch, decode, and register fetch are accounted for.
+- `even_execute.sv` and `odd_execute.sv` implement the combinational functional-unit behavior for their respective pipe classes.
+- Forwarding logic compares `RA`, `RB`, `RC`, and `RT` sources against destinations in both pipes and substitutes in-flight results when available.
+- The final forwarding/writeback stages drive separate even and odd writeback paths into the 128-bit register file.
+
+### Stop Behavior
+
+- The processor uses stop logic to transition from active execution into hardware no-op issue once a `stop` instruction is observed.
+- If `stop` appears as the second instruction in a fetched pair, the design can still allow the first instruction to issue when it is safe; otherwise it suppresses new work with no-ops.
+- Branch redirects take priority over stop behavior, so a taken branch can override a pending stop and resume execution from the branch target.
+- The top-level testbench waits for `stop` to remain asserted for 25 cycles before ending simulation, reducing the chance of terminating during a transient stop that is superseded by a branch.
 
 ---
 
@@ -310,18 +360,6 @@ python3 assembler.py
 
 This repository is an academic/portfolio RTL project rather than a production CPU core. Potential next steps include:
 
-- Add a simulator-specific regression script or Makefile.
-- Add waveform dumping for common open-source simulation flows.
 - Expand self-checking assertions in the testbenches.
 - Add instruction-by-instruction golden-model comparison from Python.
 - Document all instruction encodings in a generated table.
-- Add CI with Verilator lint and assembler tests.
-- Refine local-store addressing documentation and memory-size comments.
-
----
-
-## What This Demonstrates About Me
-
-This project shows that I can take a complex architecture problem and break it into manageable, testable components. It also demonstrates the kind of engineering discipline I bring to teams: building supporting tools, documenting architecture decisions, thinking through hazards and edge cases, and making design tradeoffs explicit.
-
-If you are evaluating me for a hardware, embedded systems, computer architecture, FPGA, or performance-oriented engineering role, this project is intended to provide a concrete example of my ability to design and reason about non-trivial systems from the ISA/tooling layer down to RTL implementation.
