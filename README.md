@@ -1,22 +1,7 @@
 # 11-Stage Pipelined Dual-Issue Sony Cell SPU
 
-A SystemVerilog implementation of a simplified **Sony Cell Synergistic Processing Unit (SPU)**-style processor core. The project models a dual-issue, deeply pipelined execution engine with separate even/odd instruction pipes, 128-bit SIMD-style register data paths, hazard-aware issue logic, branch handling, local-store memory support, and a Python assembler for loading SPU-like assembly programs into simulation.
+A SystemVerilog implementation of a simplified **11-Stage Sony Cell Synergistic Processing Unit (SPU)** processor core. The project models a dual-issue, deeply pipelined execution engine with separate even/odd instruction pipes, 128-bit SIMD-style register data paths, hazard-aware issue logic, branch handling, local-store memory support, and a Python assembler for loading SPU-like assembly programs into simulation.
 
-This repository is written to demonstrate hardware architecture judgment, RTL implementation depth, and end-to-end system thinking: instruction encoding, decode, issue, execute, forwarding, memory, and testbench-driven validation are all represented in a compact processor project.
-
----
-
-## Why This Project Matters
-
-For engineering managers reviewing my work, this project highlights my ability to:
-
-- Translate a real processor architecture concept into modular RTL.
-- Design a pipelined datapath with realistic control-flow and hazard-management concerns.
-- Implement both the hardware model and the software tooling needed to exercise it.
-- Work across abstraction layers: assembly, instruction encoding, microarchitecture, memories, pipeline registers, forwarding, and verification.
-- Build readable, decomposed hardware modules rather than a monolithic simulation model.
-
----
 
 ## Main Features
 
